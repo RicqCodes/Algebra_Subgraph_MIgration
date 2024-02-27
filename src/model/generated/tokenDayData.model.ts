@@ -12,8 +12,8 @@ export class TokenDayData {
     @PrimaryColumn_()
     id!: string
 
-    @Column_("int4", {nullable: false})
-    date!: number
+    @Column_("numeric", {transformer: marshal.bigintTransformer, nullable: false})
+    date!: bigint
 
     @Index_()
     @ManyToOne_(() => Token, {nullable: true})

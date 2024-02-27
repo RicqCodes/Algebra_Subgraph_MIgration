@@ -3,83 +3,130 @@ interface Entity {
 }
 
 export class EntityBuffer {
-  // Method to add or merge entities in the buffer
-  private static buffer: Record<string, Entity[]> = {};
+  // Using Map for efficient lookups and storage
+  private static buffer: Map<string, Map<string, Entity>> | null = new Map();
 
-  // Method to check if an entity exists in the buffer and return it
   static get(entityType: string, entityId: string): Entity | undefined {
-    // Check if there's an array for the entityType
-    const entities = this.buffer[entityType];
+    if (!this.buffer) return undefined;
+    const entities = this.buffer.get(entityType);
+    return entities?.get(entityId);
+  }
+
+  static add<E extends Entity>(entity: E) {
+    if (!this.buffer) {
+      this.buffer = new Map<string, Map<string, Entity>>();
+    }
+    let entities = this.buffer!.get(entity.constructor.name);
     if (!entities) {
-      // No entities of this type are present in the buffer
-      return undefined;
+      entities = new Map();
+      this.buffer!.set(entity.constructor.name, entities);
     }
 
-    // Find the entity with the given ID in the array
-    const entity = entities.find((e) => e.id === entityId);
-
-    // Return the found entity, or undefined if not found
-    return entity;
-  }
-
-  // Method to add or merge entities in the buffer
-  static add<E extends Entity>(e: E) {
-    if (!this.buffer[e.constructor.name]) {
-      this.buffer[e.constructor.name] = [];
-    }
-
-    const entities = this.buffer[e.constructor.name];
-    const index = entities.findIndex((entity) => entity.id === e.id);
-
-    if (index !== -1) {
-      // Entity exists, merge it
-      entities[index] = EntityBuffer.mergeEntities(entities[index], e);
+    const existingEntity = entities.get(entity.id);
+    if (existingEntity) {
+      // Merge directly into the existing entity to avoid creating a new instance
+      this.mergeEntities(existingEntity, entity);
     } else {
-      // Entity does not exist, add it to the array
-      entities.push(e);
+      entities.set(entity.id, entity);
     }
   }
 
-  // Method to merge two entities
-  static mergeEntities<E extends Entity>(existingEntity: E, newEntity: E): E {
-    // Create a new instance of the entity's class to preserve instance methods and properties
-    const mergedEntity = Object.create(Object.getPrototypeOf(existingEntity));
+  // static mergeEntities<E extends Entity>(target: E, source: E): void {
+  //   Object.keys(source).forEach((key) => {
+  //     const targetValue = target[key as keyof E];
+  //     const sourceValue = source[key as keyof E];
 
-    Object.keys(existingEntity).forEach((key) => {
-      mergedEntity[key as keyof Entity] = existingEntity[key as keyof Entity];
-    });
+  //     if (Array.isArray(targetValue) && Array.isArray(sourceValue)) {
+  //       // Efficiently handle array merging without unnecessary deduplication
+  //       target[key as keyof E] = [
+  //         ...new Set([...targetValue, ...sourceValue]),
+  //       ] as any;
+  //     } else if (isPlainObject(targetValue) && isPlainObject(sourceValue)) {
+  //       // Correctly perform a deep merge by updating the target object directly
+  //       // Ensure both targetValue and sourceValue are treated as Entity for recursive merging
+  //       if (!isPlainObject(target[key as keyof E])) {
+  //         // Initialize target[key] as an object if it's not already an object
+  //         target[key as keyof E] = {} as any;
+  //       }
+  //       // Recursively merge nested objects without returning and spreading
+  //       this.mergeEntities(targetValue as any, sourceValue as any);
+  //     } else {
+  //       target[key as keyof E] = sourceValue;
+  //     }
+  //   });
+  // }
 
-    Object.keys(newEntity).forEach((key) => {
-      const existingValue = existingEntity[key as keyof Entity] as unknown;
-      const newValue = newEntity[key as keyof Entity] as unknown;
+  static mergeEntities<E extends Entity>(target: E, source: E): void {
+    // Define properties that should not be merged
+    const immutableProperties = ["id"]; // Add any other unique or immutable properties here
 
-      if (Array.isArray(existingValue) && Array.isArray(newValue)) {
-        // Merge arrays by concatenating them and removing duplicates
-        const newArr = Array.from(new Set([...existingValue, ...newValue]));
-        mergedEntity[key] = newArr;
-      } else if (isPlainObject(existingValue) && isPlainObject(newValue)) {
-        // For nested objects within the entities, perform a deeper merge
-        mergedEntity[key] = this.mergeEntities(
-          existingValue as Entity,
-          newValue as Entity
-        );
+    Object.keys(source).forEach((key) => {
+      if (immutableProperties.includes(key)) {
+        // Skip merging for immutable properties
+        return;
+      }
+
+      const targetValue = target[key as keyof E];
+      const sourceValue = source[key as keyof E];
+
+      if (Array.isArray(targetValue) && Array.isArray(sourceValue)) {
+        // For arrays containing objects, merge based on a unique property (e.g., 'id')
+        if (
+          targetValue.length > 0 &&
+          typeof targetValue[0] === "object" &&
+          "id" in targetValue[0]
+        ) {
+          const mergedArray = [...targetValue];
+
+          sourceValue.forEach((sourceItem) => {
+            const index = mergedArray.findIndex(
+              (targetItem) => targetItem.id === sourceItem.id
+            );
+            if (index !== -1) {
+              // For existing items, merge them
+              this.mergeEntities(mergedArray[index] as any, sourceItem);
+            } else {
+              // Add new items
+              mergedArray.push(sourceItem);
+            }
+          });
+
+          target[key as keyof E] = mergedArray as any;
+        } else {
+          // For arrays not containing objects or without unique identifiers, use Set for deduplication
+          target[key as keyof E] = [
+            ...new Set([...targetValue, ...sourceValue]),
+          ] as any;
+        }
+      } else if (isPlainObject(targetValue) && isPlainObject(sourceValue)) {
+        // Ensure target[key] is an object for recursive merging
+        if (!isPlainObject(target[key as keyof E])) {
+          target[key as keyof E] = {} as any;
+        }
+        // Recursively merge nested objects
+        this.mergeEntities(targetValue as any, sourceValue as any);
       } else {
-        // For primitive values or non-matching types, prefer the new value
-        mergedEntity[key] = newValue;
+        // Directly assign sourceValue to target for other types
+        target[key as keyof E] = sourceValue;
       }
     });
-
-    return mergedEntity;
   }
 
+  // Helper function to check if a value is a plain object
+
   static flush() {
-    let values = Object.values(this.buffer);
-    this.buffer = {};
-    return values;
+    const values = Array.from(this.buffer!.values()).map((entities) =>
+      Array.from(entities.values())
+    );
+    this.buffer!.clear();
+    this.buffer = null;
+    return values.flat();
   }
 }
 
-// Utility function to check if a value is a plain object
-function isPlainObject(obj: any): obj is Record<string, any> {
-  return Object.prototype.toString.call(obj) === "[object Object]";
+// function isPlainObject(obj: any): obj is Record<string, any> {
+//   return Object.prototype.toString.call(obj) === "[object Object]";
+// }
+function isPlainObject(obj: any): obj is Object {
+  return typeof obj === "object" && obj !== null && obj.constructor === Object;
 }

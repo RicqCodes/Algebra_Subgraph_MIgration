@@ -11,8 +11,8 @@ export class AlgebraDayData {
     @PrimaryColumn_()
     id!: string
 
-    @Column_("int4", {nullable: false})
-    date!: number
+    @Column_("numeric", {transformer: marshal.bigintTransformer, nullable: false})
+    date!: bigint
 
     @Column_("numeric", {transformer: marshal.bigdecimalTransformer, nullable: false})
     volumeMatic!: BigDecimal

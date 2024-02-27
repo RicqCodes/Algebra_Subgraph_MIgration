@@ -51,13 +51,21 @@ export const handleInitialize = async (
   log: Log,
   ctx: DataHandlerContext<Store>
 ): Promise<void> => {
-  let pool: Pool | undefined = EntityBuffer.get(
-    "Pool",
-    log.address.toLowerCase()
-  ) as Pool | undefined;
+  const poolAddress = log.address.toLowerCase();
+  let pool: Pool | undefined = EntityBuffer.get("Pool", poolAddress) as
+    | Pool
+    | undefined;
 
   if (!pool) {
-    pool = await ctx.store.get(Pool, log.address.toLowerCase());
+    pool = await ctx.store.get(Pool, {
+      where: { id: poolAddress },
+      relations: {
+        token0: true,
+        token1: true,
+        poolDayData: true,
+        poolHourData: true,
+      },
+    });
   }
 
   pool!.sqrtPrice = event.price;
@@ -72,14 +80,20 @@ export const handleInitialize = async (
     pool!.token0.id.toLowerCase()
   ) as Token | undefined;
   if (!token0) {
-    token0 = await ctx.store.get(Token, pool!.token0.id.toLowerCase());
+    token0 = await ctx.store.get(Token, {
+      where: { id: pool!.token0.id.toLowerCase() },
+      relations: { tokenDayData: true, whitelistPools: true },
+    });
   }
   let token1: Token | undefined = EntityBuffer.get(
     "Token",
     pool!.token1.id.toLowerCase()
   ) as Token | undefined;
   if (!token1) {
-    token1 = await ctx.store.get(Token, pool!.token1.id.toLowerCase());
+    token1 = await ctx.store.get(Token, {
+      where: { id: pool!.token1.id.toLowerCase() },
+      relations: { tokenDayData: true, whitelistPools: true },
+    });
   }
 
   // update Matic price now that prices could have changed
@@ -130,15 +144,22 @@ export const handleMint = async (
     bundle = await ctx.store.get(Bundle, "1");
   }
 
-  let poolAddress = log.address;
+  let poolAddress = log.address.toLowerCase();
 
-  let pool: Pool | undefined = EntityBuffer.get(
-    "Pool",
-    poolAddress.toLowerCase()
-  ) as Pool | undefined;
+  let pool: Pool | undefined = EntityBuffer.get("Pool", poolAddress) as
+    | Pool
+    | undefined;
 
   if (!pool) {
-    pool = await ctx.store.get(Pool, poolAddress.toLowerCase());
+    pool = await ctx.store.get(Pool, {
+      where: { id: log.address.toLowerCase() },
+      relations: {
+        token0: true,
+        token1: true,
+        poolDayData: true,
+        poolHourData: true,
+      },
+    });
   }
 
   let factory: Factory | undefined = EntityBuffer.get(
@@ -156,7 +177,10 @@ export const handleMint = async (
   ) as Token | undefined;
 
   if (!token0) {
-    token0 = await ctx.store.get(Token, pool!.token0.id.toLowerCase());
+    token0 = await ctx.store.get(Token, {
+      where: { id: pool!.token0.id.toLowerCase() },
+      relations: { tokenDayData: true, whitelistPools: true },
+    });
   }
 
   let token1: Token | undefined = EntityBuffer.get(
@@ -165,13 +189,16 @@ export const handleMint = async (
   ) as Token | undefined;
 
   if (!token1) {
-    token1 = await ctx.store.get(Token, pool!.token1.id.toLowerCase());
+    token1 = await ctx.store.get(Token, {
+      where: { id: pool!.token1.id.toLowerCase() },
+      relations: { tokenDayData: true, whitelistPools: true },
+    });
   }
 
   let amount0 = convertTokenToDecimal(event.amount0, token0!.decimals);
   let amount1 = convertTokenToDecimal(event.amount1, token1!.decimals);
 
-  if (pools_list.includes(log.address.toLowerCase())) {
+  if (pools_list.includes(log.address)) {
     amount0 = convertTokenToDecimal(event.amount1, token0!.decimals);
     amount1 = convertTokenToDecimal(event.amount0, token1!.decimals);
   }
@@ -271,7 +298,10 @@ export const handleMint = async (
   ) as Tick | undefined;
 
   if (!lowerTick) {
-    lowerTick = await ctx.store.get(Tick, lowerTickId.toLowerCase());
+    lowerTick = await ctx.store.get(Tick, {
+      where: { id: lowerTickId.toLowerCase() },
+      relations: { pool: true },
+    });
   }
 
   let upperTick: Tick | undefined = EntityBuffer.get(
@@ -280,7 +310,10 @@ export const handleMint = async (
   ) as Tick | undefined;
 
   if (!upperTick) {
-    upperTick = await ctx.store.get(Tick, upperTickId.toLowerCase());
+    upperTick = await ctx.store.get(Tick, {
+      where: { id: upperTickId.toLowerCase() },
+      relations: { pool: true },
+    });
   }
 
   if (!lowerTick) {
@@ -354,7 +387,13 @@ export const handleBurn = async (
   ) as Pool | undefined;
 
   if (!pool) {
-    pool = await ctx.store.get(Pool, poolAddress.toLowerCase());
+    pool = await ctx.store.get(Pool, {
+      where: { id: log.address.toLowerCase() },
+      relations: {
+        token0: true,
+        token1: true,
+      },
+    });
   }
 
   let factory: Factory | undefined = EntityBuffer.get(
@@ -372,7 +411,10 @@ export const handleBurn = async (
   ) as Token | undefined;
 
   if (!token0) {
-    token0 = await ctx.store.get(Token, pool!.token0.id.toLowerCase());
+    token0 = await ctx.store.get(Token, {
+      where: { id: pool!.token0.id.toLowerCase() },
+      relations: { tokenDayData: true, whitelistPools: true },
+    });
   }
 
   let token1: Token | undefined = EntityBuffer.get(
@@ -381,7 +423,10 @@ export const handleBurn = async (
   ) as Token | undefined;
 
   if (!token1) {
-    token1 = await ctx.store.get(Token, pool!.token1.id.toLowerCase());
+    token1 = await ctx.store.get(Token, {
+      where: { id: pool!.token1.id.toLowerCase() },
+      relations: { tokenDayData: true, whitelistPools: true },
+    });
   }
 
   let amount0 = convertTokenToDecimal(event.amount0, token0!.decimals);
@@ -486,7 +531,10 @@ export const handleBurn = async (
   ) as Tick | undefined;
 
   if (!lowerTick) {
-    lowerTick = await ctx.store.get(Tick, lowerTickId.toLowerCase());
+    lowerTick = await ctx.store.get(Tick, {
+      where: { id: lowerTickId.toLowerCase() },
+      relations: { pool: true },
+    });
   }
 
   let upperTick: Tick | undefined = EntityBuffer.get(
@@ -495,7 +543,10 @@ export const handleBurn = async (
   ) as Tick | undefined;
 
   if (!upperTick) {
-    upperTick = await ctx.store.get(Tick, upperTickId.toLowerCase());
+    upperTick = await ctx.store.get(Tick, {
+      where: { id: upperTickId.toLowerCase() },
+      relations: { pool: true },
+    });
   }
 
   let amount = event.liquidityAmount;
@@ -565,7 +616,13 @@ export const handleSwap = async (
   ) as Pool | undefined;
 
   if (!pool) {
-    pool = await ctx.store.get(Pool, log.address.toLowerCase());
+    pool = await ctx.store.get(Pool, {
+      where: { id: log.address.toLowerCase() },
+      relations: {
+        token0: true,
+        token1: true,
+      },
+    });
   }
 
   let oldTick = pool!.tick;
@@ -577,7 +634,10 @@ export const handleSwap = async (
   ) as Token | undefined;
 
   if (!token0) {
-    token0 = await ctx.store.get(Token, pool!.token0.id.toLowerCase());
+    token0 = await ctx.store.get(Token, {
+      where: { id: pool!.token0.id.toLowerCase() },
+      relations: { tokenDayData: true, whitelistPools: true },
+    });
   }
 
   let token1: Token | undefined = EntityBuffer.get(
@@ -586,7 +646,10 @@ export const handleSwap = async (
   ) as Token | undefined;
 
   if (!token1) {
-    token1 = await ctx.store.get(Token, pool!.token1.id.toLowerCase());
+    token1 = await ctx.store.get(Token, {
+      where: { id: pool!.token1.id.toLowerCase() },
+      relations: { tokenDayData: true, whitelistPools: true },
+    });
   }
 
   let amount0 = convertTokenToDecimal(event.amount0, token0!.decimals);
@@ -793,7 +856,7 @@ export const handleSwap = async (
   swap.price = event.price;
 
   // update fee growth
-  let lastBatchBlockHeader = ctx.blocks[ctx.blocks.length - 1].header;
+  let lastBatchBlockHeader = { height: log.block.height };
   const ctxContract: BlockContext = {
     _chain: ctx._chain,
     block: lastBatchBlockHeader,
@@ -949,7 +1012,15 @@ export const handleSetCommunityFee = async (
   ) as Pool | undefined;
 
   if (!pool) {
-    pool = await ctx.store.get(Pool, log.address.toLowerCase());
+    pool = await ctx.store.get(Pool, {
+      where: { id: log.address.toLowerCase() },
+      relations: {
+        token0: true,
+        token1: true,
+        poolDayData: true,
+        poolHourData: true,
+      },
+    });
   }
 
   if (pool) {
@@ -982,7 +1053,7 @@ export const handleCollect = async (
     bundle = await ctx.store.get(Bundle, "1");
   }
 
-  let poolAddress = log.address;
+  const poolAddress = log.address.toLowerCase();
 
   let pool: Pool | undefined = EntityBuffer.get(
     "Pool",
@@ -990,7 +1061,15 @@ export const handleCollect = async (
   ) as Pool | undefined;
 
   if (!pool) {
-    pool = await ctx.store.get(Pool, poolAddress.toLowerCase());
+    pool = await ctx.store.get(Pool, {
+      where: { id: poolAddress },
+      relations: {
+        token0: true,
+        token1: true,
+        poolDayData: true,
+        poolHourData: true,
+      },
+    });
   }
 
   let factory: Factory | undefined = EntityBuffer.get(
@@ -1008,7 +1087,10 @@ export const handleCollect = async (
   ) as Token | undefined;
 
   if (!token0) {
-    token0 = await ctx.store.get(Token, pool!.token0.id.toLowerCase());
+    token0 = await ctx.store.get(Token, {
+      where: { id: pool!.token0.id.toLowerCase() },
+      relations: { tokenDayData: true, whitelistPools: true },
+    });
   }
 
   let token1: Token | undefined = EntityBuffer.get(
@@ -1017,7 +1099,10 @@ export const handleCollect = async (
   ) as Token | undefined;
 
   if (!token1) {
-    token1 = await ctx.store.get(Token, pool!.token1.id.toLowerCase());
+    token1 = await ctx.store.get(Token, {
+      where: { id: pool!.token1.id.toLowerCase() },
+      relations: { tokenDayData: true, whitelistPools: true },
+    });
   }
 
   let amount0 = convertTokenToDecimal(event.amount0, token0!.decimals);
@@ -1124,7 +1209,7 @@ const updateTickFeeVarsAndSave = async (
 ): Promise<void> => {
   let poolAddress = log.address;
 
-  let lastBatchBlockHeader = ctx.blocks[ctx.blocks.length - 1].header;
+  let lastBatchBlockHeader = { height: log.block.height };
 
   const ctxContract: BlockContext = {
     _chain: ctx._chain,
@@ -1153,36 +1238,41 @@ export const handleChangeFee = async (
   log: Log,
   ctx: DataHandlerContext<Store>
 ): Promise<void> => {
-  let pool: Pool | undefined = EntityBuffer.get(
-    "Pool",
-    log.address.toLowerCase()
-  ) as Pool | undefined;
+  const poolAddress = log.address.toLowerCase();
+  let pool: Pool | undefined = EntityBuffer.get("Pool", poolAddress) as
+    | Pool
+    | undefined;
 
   if (!pool) {
-    pool = await ctx.store.get(Pool, log.address.toLowerCase());
+    pool = await ctx.store.get(Pool, {
+      where: { id: poolAddress },
+      relations: {
+        token0: true,
+        token1: true,
+      },
+    });
   }
 
   pool!.fee = BigInt(event.fee);
 
   EntityBuffer.add(pool!);
-
   let fee: PoolFeeData | undefined = EntityBuffer.get(
     "PoolFeeData",
-    log.address.toLowerCase() + "#" + log.block.timestamp.toString()
+    poolAddress + "#" + log.block.timestamp.toString()
   ) as PoolFeeData | undefined;
 
   if (!fee) {
     fee = await ctx.store.get(
       PoolFeeData,
-      log.address.toLowerCase() + "#" + log.block.timestamp.toString()
+      poolAddress + "#" + log.block.timestamp.toString()
     );
   }
 
   if (!fee) {
     fee = new PoolFeeData({
-      id: log.block.timestamp.toString() + log.address.toLowerCase(),
+      id: log.block.timestamp.toString() + poolAddress,
     });
-    fee.pool = log.address.toLowerCase();
+    fee.pool = poolAddress;
     fee.fee = BigInt(event.fee);
     fee.timestamp = BigInt(log.block.timestamp);
   } else {
@@ -1191,7 +1281,6 @@ export const handleChangeFee = async (
   await updateFeeHourData(log, ctx, BigInt(event.fee));
 
   EntityBuffer.add(fee);
-  // fee.save();
 };
 
 const loadTickUpdateFeeVarsAndSave = async (
@@ -1199,20 +1288,20 @@ const loadTickUpdateFeeVarsAndSave = async (
   log: Log,
   ctx: DataHandlerContext<Store>
 ): Promise<void> => {
-  let poolAddress = log.address;
+  let poolAddress = log.address.toLowerCase();
   let tick: Tick | undefined = EntityBuffer.get(
     "Tick",
-    poolAddress.toLowerCase().concat("#").concat(tickId.toString())
+    poolAddress.concat("#").concat(tickId.toString())
   ) as Tick | undefined;
 
   if (!tick) {
     tick = await ctx.store.get(
       Tick,
-      poolAddress.toLowerCase().concat("#").concat(tickId.toString())
+      poolAddress.concat("#").concat(tickId.toString())
     );
   }
 
-  if (!tick) {
+  if (tick != undefined) {
     await updateTickFeeVarsAndSave(tick!, log, ctx);
   }
 };

@@ -28,11 +28,20 @@ const getPosition = async (
   ) as Position | undefined;
 
   if (!position) {
-    position = await ctx.store.get(Position, tokenId.toString().toLowerCase());
+    position = await ctx.store.get(Position, {
+      where: { id: tokenId.toString().toLowerCase() },
+      relations: {
+        pool: true,
+        token0: true,
+        token1: true,
+        tickLower: true,
+        tickUpper: true,
+      },
+    });
   }
 
   if (!position) {
-    let lastBatchBlockHeader = ctx.blocks[ctx.blocks.length - 1].header;
+    let lastBatchBlockHeader = { height: log.block.height };
     const ctxContract: BlockContext = {
       _chain: ctx._chain,
       block: lastBatchBlockHeader,
@@ -48,7 +57,7 @@ const getPosition = async (
     // the following call reverts in situations where the position is minted
     // and deleted in the same block
     if (positionResult) {
-      let lastBatchBlockHeader = ctx.blocks[ctx.blocks.length - 1].header;
+      let lastBatchBlockHeader = { height: log.block.height };
       const ctxContract: BlockContext = {
         _chain: ctx._chain,
         block: lastBatchBlockHeader,
@@ -61,14 +70,22 @@ const getPosition = async (
       );
 
       let poolAddress = await factoryContract.poolByPair(
-        positionResult.token0,
-        positionResult.token1
+        positionResult[2],
+        positionResult[3]
       );
 
       let pool = EntityBuffer.get("Pool", poolAddress.toLowerCase()) as
         | Pool
         | undefined;
-      if (!pool) pool = await ctx.store.get(Pool, poolAddress.toLowerCase());
+      if (!pool) {
+        pool = await ctx.store.get(Pool, {
+          where: { id: poolAddress.toLowerCase() },
+          relations: {
+            token0: true,
+            token1: true,
+          },
+        });
+      }
 
       position = new Position({ id: tokenId.toString().toLowerCase() });
       // The owner gets correctly updated in the Transfer handler
@@ -84,12 +101,13 @@ const getPosition = async (
             Token,
             positionResult[3].toLowerCase()
           )) as Token;
+
         let token1 = EntityBuffer.get(
           "Token",
           positionResult[2].toLowerCase()
         ) as Token;
         if (!token1)
-          token0 = (await ctx.store.get(
+          token1 = (await ctx.store.get(
             Token,
             positionResult[2].toLowerCase()
           )) as Token;
@@ -106,12 +124,13 @@ const getPosition = async (
             Token,
             positionResult[2].toLowerCase()
           )) as Token;
+
         let token1 = EntityBuffer.get(
           "Token",
           positionResult[3].toLowerCase()
         ) as Token;
         if (!token1)
-          token0 = (await ctx.store.get(
+          token1 = (await ctx.store.get(
             Token,
             positionResult[3].toLowerCase()
           )) as Token;

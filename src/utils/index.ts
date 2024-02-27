@@ -32,31 +32,16 @@ export function bigDecimalExponated(
   value: BigDecimal,
   power: bigint
 ): BigDecimal {
-  // Direct return for power of 0
-  if (power === BigInt(0)) {
-    return BigDecimal("1");
+  // Ensure power is within the safe integer range
+  if (power < Number.MIN_SAFE_INTEGER || power > Number.MAX_SAFE_INTEGER) {
+    throw new Error("Power value is out of the safe integer range.");
   }
 
-  // Determine if the power is negative
-  let negativePower = power < BigInt(0);
+  // Convert bigint to number for the pow method
+  const powerNumber = Number(power);
 
-  // Convert power to its absolute value for loop processing
-  let powerAbs = negativePower ? -power : power;
-
-  // Initialize result for multiplication loop
-  let result = BigDecimal("1");
-
-  // Loop for the absolute value of power
-  for (let i = BigInt(0); i < powerAbs; i++) {
-    result = result.mul(value);
-  }
-
-  // If the power was negative, take the reciprocal of the result
-  if (negativePower) {
-    result = BigDecimal("1").div(result);
-  }
-
-  return result;
+  const valueData = Math.pow(value.toNumber(), powerNumber);
+  return BigDecimal(valueData);
 }
 
 export function tokenAmountToDecimal(

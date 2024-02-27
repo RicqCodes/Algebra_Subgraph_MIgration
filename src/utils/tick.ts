@@ -23,7 +23,20 @@ export const createTick = async (
   ) as Pool | undefined;
 
   if (!pool) {
-    pool = await ctx.store.get(Pool, poolId);
+    pool = await ctx.store.get(Pool, {
+      where: { id: poolId },
+      relations: {
+        token0: true,
+        token1: true,
+        poolDayData: true,
+        poolHourData: true,
+        mints: true,
+        burns: true,
+        swaps: true,
+        collects: true,
+        ticks: true,
+      },
+    });
   }
 
   tick.pool = pool!;
@@ -40,7 +53,6 @@ export const createTick = async (
 
   // 1.0001^tick is token1/token0.
   let price0 = bigDecimalExponated(BigDecimal("1.0001"), BigInt(tickIdx));
-  console.log("we are running up till this point");
   tick.price0 = price0;
   tick.price1 = safeDiv(ONE_BD, price0);
 

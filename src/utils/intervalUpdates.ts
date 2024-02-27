@@ -38,7 +38,7 @@ export const updateAlgebraDayData = async (
   }
 
   let timestamp = log.block.timestamp;
-  let dayID = timestamp / 86400; // rounded
+  let dayID = Math.round(timestamp / 86400); // rounded
   let dayStartTimestamp = dayID * 86400;
 
   let algebraDayData: AlgebraDayData | undefined = EntityBuffer.get(
@@ -55,7 +55,7 @@ export const updateAlgebraDayData = async (
 
   if (!algebraDayData) {
     algebraDayData = new AlgebraDayData({ id: dayID.toString().toLowerCase() });
-    algebraDayData.date = dayStartTimestamp;
+    algebraDayData.date = BigInt(dayStartTimestamp);
     algebraDayData.volumeMatic = ZERO_BD;
     algebraDayData.volumeUSD = ZERO_BD;
     algebraDayData.volumeUSDUntracked = ZERO_BD;
@@ -74,7 +74,7 @@ export const updatePoolDayData = async (
   ctx: DataHandlerContext<Store>
 ): Promise<PoolDayData> => {
   let timestamp = log.block.timestamp;
-  let dayID = timestamp / 86400;
+  let dayID = Math.round(timestamp / 86400);
   let dayStartTimestamp = dayID * 86400;
   let dayPoolID = log.address
     .toLowerCase()
@@ -98,9 +98,10 @@ export const updatePoolDayData = async (
   if (!poolDayData) {
     poolDayData = await ctx.store.get(PoolDayData, dayPoolID);
   }
+
   if (!poolDayData) {
     poolDayData = new PoolDayData({ id: dayPoolID });
-    poolDayData.date = dayStartTimestamp;
+    poolDayData.date = BigInt(dayStartTimestamp);
     poolDayData.pool = pool!;
     // things that dont get initialized always
     poolDayData.volumeToken0 = ZERO_BD;
@@ -130,6 +131,8 @@ export const updatePoolDayData = async (
   poolDayData.feeGrowthGlobal1X128 = pool!.feeGrowthGlobal1X128;
   poolDayData.token0Price = pool!.token0Price;
   poolDayData.token1Price = pool!.token1Price;
+  poolDayData.feesToken0 = pool!.feesToken0;
+  poolDayData.feesToken1 = pool!.feesToken1;
   poolDayData.tick = pool!.tick;
   poolDayData.tvlUSD = pool!.totalValueLockedUSD;
   poolDayData.txCount = BigInt(
@@ -147,7 +150,7 @@ export const updateFeeHourData = async (
   Fee: BigInt
 ): Promise<void> => {
   let timestamp = log.block.timestamp;
-  let hourIndex = timestamp / 3600;
+  let hourIndex = Math.round(timestamp / 3600);
   let hourStartUnix = hourIndex * 3600;
   let hourFeeID = log.address
     .toLowerCase()
@@ -197,7 +200,7 @@ export const updatePoolHourData = async (
   ctx: DataHandlerContext<Store>
 ): Promise<PoolHourData> => {
   let timestamp = log.block.timestamp;
-  let hourIndex = timestamp / 3600; // get unique hour within unix history
+  let hourIndex = Math.round(timestamp / 3600); // get unique hour within unix history
   let hourStartUnix = hourIndex * 3600; // want the rounded effect
   let hourPoolID = log.address
     .toLowerCase()
@@ -224,7 +227,7 @@ export const updatePoolHourData = async (
 
   if (!poolHourData) {
     poolHourData = new PoolHourData({ id: hourPoolID });
-    poolHourData.periodStartUnix = hourStartUnix;
+    poolHourData.periodStartUnix = BigInt(hourStartUnix);
     poolHourData.pool = pool!;
     // things that dont get initialized always
     poolHourData.volumeToken0 = ZERO_BD;
@@ -270,7 +273,7 @@ export const updateTokenDayData = async (
   log: Log,
   ctx: DataHandlerContext<Store>
 ): Promise<TokenDayData> => {
-  let bundle: Bundle | undefined = EntityBuffer.get("Profile", "1") as
+  let bundle: Bundle | undefined = EntityBuffer.get("Bundle", "1") as
     | Bundle
     | undefined;
 
@@ -279,7 +282,7 @@ export const updateTokenDayData = async (
   }
 
   let timestamp = log.block.timestamp;
-  let dayID = timestamp / 86400;
+  let dayID = Math.round(timestamp / 86400);
   let dayStartTimestamp = dayID * 86400;
   let tokenDayID = token.id
     .toString()
@@ -299,7 +302,7 @@ export const updateTokenDayData = async (
 
   if (!tokenDayData) {
     tokenDayData = new TokenDayData({ id: tokenDayID.toLowerCase() });
-    tokenDayData.date = dayStartTimestamp;
+    tokenDayData.date = BigInt(dayStartTimestamp);
     tokenDayData.token = token;
     tokenDayData.volume = ZERO_BD;
     tokenDayData.volumeUSD = ZERO_BD;
@@ -335,7 +338,7 @@ export const updateTokenHourData = async (
   log: Log,
   ctx: DataHandlerContext<Store>
 ): Promise<TokenHourData> => {
-  let bundle: Bundle | undefined = EntityBuffer.get("Profile", "1") as
+  let bundle: Bundle | undefined = EntityBuffer.get("Bundle", "1") as
     | Bundle
     | undefined;
 
@@ -344,7 +347,7 @@ export const updateTokenHourData = async (
   }
 
   let timestamp = log.block.timestamp;
-  let hourIndex = timestamp / 3600; // get unique hour within unix history
+  let hourIndex = Math.round(timestamp / 3600); // get unique hour within unix history
   let hourStartUnix = hourIndex * 3600; // want the rounded effect
   let tokenHourID = token.id
     .toString()
@@ -365,7 +368,7 @@ export const updateTokenHourData = async (
 
   if (!tokenHourData) {
     tokenHourData = new TokenHourData({ id: tokenHourID.toLowerCase() });
-    tokenHourData.periodStartUnix = hourStartUnix;
+    tokenHourData.periodStartUnix = BigInt(hourStartUnix);
     tokenHourData.token = token;
     tokenHourData.volume = ZERO_BD;
     tokenHourData.volumeUSD = ZERO_BD;
@@ -402,7 +405,7 @@ export const updateTickDayData = async (
   ctx: DataHandlerContext<Store>
 ): Promise<TickDayData> => {
   let timestamp = log.block.timestamp;
-  let dayID = timestamp / 86400;
+  let dayID = Math.round(timestamp / 86400);
   let dayStartTimestamp = dayID * 86400;
   let tickDayDataID = tick.id
     .toLowerCase()
@@ -420,7 +423,7 @@ export const updateTickDayData = async (
 
   if (!tickDayData) {
     tickDayData = new TickDayData({ id: tickDayDataID });
-    tickDayData.date = dayStartTimestamp;
+    tickDayData.date = BigInt(dayStartTimestamp);
     tickDayData.pool = tick.pool;
     tickDayData.tick = tick;
   }

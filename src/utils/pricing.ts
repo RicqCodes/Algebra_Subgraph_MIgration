@@ -13,10 +13,10 @@ const USDC_WMatic_03_POOL = "0xab8c35164a8e3ef302d18da953923ea31f0fe393";
 // token where amounts should contribute to tracked volume and liquidity
 // usually tokens that many tokens are paired with s
 export let WHITELIST_TOKENS: string[] = [
-  "0xacc15dc74880c9944775448304b263d191c6077f", // WGLMR
-  "0x931715fee2d06333043d11f658c8ce934ac61d0c", // USDC
-  "0xffffffffea09fb06d082fd1275cd48b191cbcd1d", // USDT
-  "0xffffffff1fcacbd218edc0eba20fc2308c778080", // DOT
+  "0xacc15dc74880c9944775448304b263d191c6077f".toLowerCase(), // WGLMR
+  "0x931715fee2d06333043d11f658c8ce934ac61d0c".toLowerCase(), // USDC
+  "0xffffffffea09fb06d082fd1275cd48b191cbcd1d".toLowerCase(), // USDT
+  "0xffffffff1fcacbd218edc0eba20fc2308c778080".toLowerCase(), // DOT
 ];
 
 let MINIMUM_Matic_LOCKED = BigDecimal("0");
@@ -24,9 +24,9 @@ let MINIMUM_Matic_LOCKED = BigDecimal("0");
 let Q192 = Math.pow(2, 192);
 
 let STABLE_COINS: string[] = [
-  "0x931715fee2d06333043d11f658c8ce934ac61d0c", // USDC
-  "0xffffffffea09fb06d082fd1275cd48b191cbcd1d", // USDT
-  "0x322e86852e492a7ee17f28a78c663da38fb33bfb", // FRAX
+  "0x931715fee2d06333043d11f658c8ce934ac61d0c".toLowerCase(), // USDC
+  "0xffffffffea09fb06d082fd1275cd48b191cbcd1d".toLowerCase(), // USDT
+  "0x322e86852e492a7ee17f28a78c663da38fb33bfb".toLowerCase(), // FRAX
 ];
 
 export function priceToTokenPrices(
@@ -34,7 +34,7 @@ export function priceToTokenPrices(
   token0: Token,
   token1: Token
 ): BigDecimal[] {
-  let num = BigDecimal(+price).times(+price);
+  let num = BigDecimal(price.toString()).times(price.toString());
   let denom = BigDecimal(Q192.toString());
   let price1 = num
     .div(denom)
@@ -75,6 +75,7 @@ export const findEthPerToken = async (
   if (token.id == WMatic_ADDRESS) {
     return ONE_BD;
   }
+
   let whiteList = token.whitelistPools;
   // for now just take USD from pool with greatest TVL
   // need to update this to actually detect best rate based on liquidity distribution
@@ -95,15 +96,15 @@ export const findEthPerToken = async (
     priceSoFar = safeDiv(ONE_BD, bundle!.maticPriceUSD);
   } else {
     for (let i = 0; i < whiteList.length; ++i) {
-      let poolAddress = whiteList[i];
+      let poolAddress = whiteList[i].id;
 
       let pool: Pool | undefined = EntityBuffer.get(
         "Pool",
-        poolAddress.id.toLowerCase()
+        poolAddress.split("-")[1]
       ) as Pool | undefined;
 
       if (!pool) {
-        pool = await ctx.store.get(Pool, poolAddress.id.toLowerCase());
+        pool = await ctx.store.get(Pool, poolAddress.split("-")[1]);
       }
 
       if (BigDecimal(pool!.liquidity).gt(ZERO_BI)) {
@@ -115,7 +116,10 @@ export const findEthPerToken = async (
           ) as Token | undefined;
 
           if (!token1) {
-            token1 = await ctx.store.get(Token, pool!.token1.id.toLowerCase());
+            token1 = await ctx.store.get(Token, {
+              where: { id: pool!.token1.id.toLowerCase() },
+              relations: { tokenDayData: true, whitelistPools: true },
+            });
           }
 
           // get the derived Matic in pool
@@ -140,7 +144,10 @@ export const findEthPerToken = async (
           ) as Token | undefined;
 
           if (!token0) {
-            token0 = await ctx.store.get(Token, pool!.token0.id.toLowerCase());
+            token0 = await ctx.store.get(Token, {
+              where: { id: pool!.token0.id.toLowerCase() },
+              relations: { tokenDayData: true, whitelistPools: true },
+            });
           }
 
           // get the derived Matic in pool

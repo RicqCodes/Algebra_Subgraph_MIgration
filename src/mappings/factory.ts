@@ -30,8 +30,18 @@ export const handlePoolCreated = async (
   log: Log,
   ctx: DataHandlerContext<Store>
 ): Promise<void> => {
-  // temp fix
+  console.log(
+    event.token0.toLowerCase() === "0xffffffff1fcacbd218edc0eba20fc2308c778080",
+    "token0 is eq to it",
+    event.token0
+  );
+  console.log(
+    event.token1.toLowerCase() === "0xffffffff1fcacbd218edc0eba20fc2308c778080",
+    "token1 is eq to it",
+    event.token1
+  );
 
+  // temp fix
   let factory: Factory | undefined = EntityBuffer.get(
     "Factory",
     FACTORY_ADDRESS.toLowerCase()
@@ -45,13 +55,13 @@ export const handlePoolCreated = async (
   if (!factory) {
     factory = new Factory({ id: FACTORY_ADDRESS.toLowerCase() });
     factory.poolCount = BigInt(ZERO_BI.toNumber());
-    factory.totalVolumeMatic = ZERO_BD;
     factory.totalVolumeUSD = ZERO_BD;
-    factory.untrackedVolumeUSD = ZERO_BD;
+    factory.totalVolumeMatic = ZERO_BD;
     factory.totalFeesUSD = ZERO_BD;
     factory.totalFeesMatic = ZERO_BD;
-    factory.totalValueLockedMatic = ZERO_BD;
+    factory.untrackedVolumeUSD = ZERO_BD;
     factory.totalValueLockedUSD = ZERO_BD;
+    factory.totalValueLockedMatic = ZERO_BD;
     factory.totalValueLockedUSDUntracked = ZERO_BD;
     factory.totalValueLockedMaticUntracked = ZERO_BD;
     factory.txCount = BigInt(ZERO_BI.toNumber());
@@ -76,22 +86,42 @@ export const handlePoolCreated = async (
   let token0: Token | undefined = EntityBuffer.get("Token", token0_address) as
     | Token
     | undefined;
-
   if (!token0) {
-    token0 = await ctx.store.get(Token, token0_address);
+    token0 = await ctx.store.get(Token, {
+      where: { id: token0_address },
+      relations: { tokenDayData: true, whitelistPools: true },
+    });
   }
 
   let token1: Token | undefined = EntityBuffer.get("Token", token1_address) as
     | Token
     | undefined;
-
   if (!token1) {
-    token1 = await ctx.store.get(Token, token1_address);
+    token1 = await ctx.store.get(Token, {
+      where: { id: token1_address },
+      relations: { tokenDayData: true, whitelistPools: true },
+    });
   }
 
-  if (pools_list.includes(event.pool)) {
-    token0 = await ctx.store.get(Token, event.token1.toLowerCase());
-    token1 = await ctx.store.get(Token, event.token0.toLowerCase());
+  if (pools_list.includes(event.pool.toLowerCase())) {
+    console.log("yes we are running");
+    token0 = EntityBuffer.get("Token", event.token1.toLowerCase()) as
+      | Token
+      | undefined;
+    token1 = EntityBuffer.get("Token", event.token0.toLowerCase()) as
+      | Token
+      | undefined;
+
+    if (!token0)
+      token0 = await ctx.store.get(Token, {
+        where: { id: event.token1.toLowerCase() },
+        relations: { tokenDayData: true, whitelistPools: true },
+      });
+    if (!token1)
+      token1 = await ctx.store.get(Token, {
+        where: { id: event.token0.toLowerCase() },
+        relations: { tokenDayData: true, whitelistPools: true },
+      });
 
     token0_address = event.token1;
     token1_address = event.token0;
@@ -99,7 +129,7 @@ export const handlePoolCreated = async (
 
   // fetch info if null
   if (!token0) {
-    token0 = new Token({ id: token0_address.toLowerCase() });
+    token0 = new Token({ id: token0_address });
     token0.symbol = await fetchTokenSymbol(token0_address, ctx);
     token0.name = await fetchTokenName(token0_address, ctx);
     token0.totalSupply = BigInt(
@@ -128,7 +158,8 @@ export const handlePoolCreated = async (
   }
 
   if (!token1) {
-    token1 = new Token({ id: token1_address.toLowerCase() });
+    console.log("theres no token1 so i am running");
+    token1 = new Token({ id: token1_address });
     token1.symbol = await fetchTokenSymbol(token1_address, ctx);
     token1.name = await fetchTokenName(token1_address, ctx);
     token1.totalSupply = BigInt(
@@ -136,7 +167,7 @@ export const handlePoolCreated = async (
     );
     let decimals = await fetchTokenDecimals(token1_address, ctx);
     // bail if we couldn't figure out the decimals
-    if (decimals === null) {
+    if (!decimals) {
       ctx.log.debug("mybug the decimal on token 0 was null");
       return;
     }
@@ -154,27 +185,27 @@ export const handlePoolCreated = async (
     token1.whitelistPools = [];
   }
 
+  let token0PoolWhitelist: TokenPoolWhitelist | undefined;
+  let token1PoolWhitelist: TokenPoolWhitelist | undefined;
   // update white listed pools
   if (WHITELIST_TOKENS.includes(token0.id)) {
-    let newPools = token1.whitelistPools;
-    const tokenPoolWhitelist = new TokenPoolWhitelist({
-      id: pool.id,
+    let newPools = token1.whitelistPools || [];
+    token0PoolWhitelist = new TokenPoolWhitelist({
+      id: `${token1.id}-${pool.id}`,
       pool: pool,
       token: token0,
     });
-    EntityBuffer.add(tokenPoolWhitelist);
-    newPools.push(tokenPoolWhitelist);
+    newPools.push(token0PoolWhitelist);
     token1.whitelistPools = newPools;
   }
   if (WHITELIST_TOKENS.includes(token1.id)) {
-    const tokenPoolWhitelist = new TokenPoolWhitelist({
-      id: pool.id,
+    let newPools = token0.whitelistPools || [];
+    token1PoolWhitelist = new TokenPoolWhitelist({
+      id: `${token0.id}-${pool.id}`,
       pool: pool,
       token: token1,
     });
-    EntityBuffer.add(tokenPoolWhitelist);
-    let newPools = token0.whitelistPools;
-    newPools.push(tokenPoolWhitelist);
+    newPools.push(token1PoolWhitelist);
     token0.whitelistPools = newPools;
   }
 
@@ -206,19 +237,21 @@ export const handlePoolCreated = async (
   pool.feesToken0 = ZERO_BD;
   pool.feesToken1 = ZERO_BD;
   pool.untrackedVolumeUSD = ZERO_BD;
-
+  pool.untrackedFeesUSD = ZERO_BD;
   pool.collectedFeesToken0 = ZERO_BD;
   pool.collectedFeesToken1 = ZERO_BD;
   pool.collectedFeesUSD = ZERO_BD;
+  pool.tick = BigInt("0");
 
-  EntityBuffer.add(pool);
+  console.log(token0.id, "token0 outside of any statement");
+  console.log(token1.id, "token1 outside of any statement");
+
   // create the tracked contract based on the template
   // PoolTemplate.create(event.params.pool);
-
   EntityBuffer.add(token0);
   EntityBuffer.add(token1);
+  if (token0PoolWhitelist !== undefined) EntityBuffer.add(token0PoolWhitelist);
+  if (token1PoolWhitelist != undefined) EntityBuffer.add(token1PoolWhitelist!);
+  EntityBuffer.add(pool);
   EntityBuffer.add(factory);
-  // token0.save();
-  // token1.save();
-  // factory.save();
 };

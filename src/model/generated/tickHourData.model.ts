@@ -13,8 +13,8 @@ export class TickHourData {
     @PrimaryColumn_()
     id!: string
 
-    @Column_("int4", {nullable: false})
-    periodStartUnix!: number
+    @Column_("numeric", {transformer: marshal.bigintTransformer, nullable: false})
+    periodStartUnix!: bigint
 
     @Index_()
     @ManyToOne_(() => Pool, {nullable: true})

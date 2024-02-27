@@ -31,8 +31,6 @@ processor.run(new TypeormDatabase(), async (ctx) => {
       .then((q) => new Set(q.map((i) => i.id)));
   }
 
-  let pools: any[] = [];
-
   for (let c of ctx.blocks) {
     for (let log of c.logs) {
       if (log.address.toLowerCase() === FACTORY_CONTRACT) {
@@ -68,7 +66,6 @@ processor.run(new TypeormDatabase(), async (ctx) => {
         }
       } else {
         if (log.topics[0] === pool.events["Initialize"].topic) {
-          console.log("log address", log.address);
           console.log("initialize running");
           const eventData = pool.events["Initialize"].decode(log);
           await handleInitialize(eventData, log, ctx);
@@ -99,5 +96,8 @@ processor.run(new TypeormDatabase(), async (ctx) => {
         }
       }
     }
+  }
+  for (let entities of EntityBuffer.flush()) {
+    await ctx.store.upsert(entities);
   }
 });

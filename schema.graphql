@@ -456,7 +456,7 @@ type AlgebraDayData @entity {
   # timestamp rounded to current day by dividing by 86400
   id: ID!
   # timestamp rounded to current day by dividing by 86400
-  date: Int!
+  date: BigInt!
   # total daily volume in Algebra derived in terms of Matic
   volumeMatic: BigDecimal!
   # total daily volume in Algebra derived in terms of USD
@@ -476,7 +476,7 @@ type PoolDayData @entity {
   # timestamp rounded to current day by dividing by 86400
   id: ID!
   # timestamp rounded to current day by dividing by 86400
-  date: Int!
+  date: BigInt!
   # pointer to pool
   pool: Pool!
   # in range liquidity at end of period
@@ -534,7 +534,7 @@ type PoolHourData @entity {
   # format: <pool address>-<timestamp>
   id: ID!
   # unix timestamp for start of hour
-  periodStartUnix: Int!
+  periodStartUnix: BigInt!
   # pointer to pool
   pool: Pool!
   # in range liquidity at end of period
@@ -578,7 +578,7 @@ type TickHourData @entity {
   # format: <pool address>-<tick index>-<timestamp>
   id: ID!
   # unix timestamp for start of hour
-  periodStartUnix: Int!
+  periodStartUnix: BigInt!
   # pointer to pool
   pool: Pool!
   # pointer to tick
@@ -603,7 +603,7 @@ type TickDayData @entity {
   # format: <pool address>-<tick index>-<timestamp>
   id: ID!
   # timestamp rounded to current day by dividing by 86400
-  date: Int!
+  date: BigInt!
   # pointer to pool
   pool: Pool!
   # pointer to tick
@@ -629,7 +629,7 @@ type TokenDayData @entity {
   # token address concatendated with date
   id: ID!
   # timestamp rounded to current day by dividing by 86400
-  date: Int!
+  date: BigInt!
   # pointer to token
   token: Token!
   # volume in token units
@@ -660,7 +660,7 @@ type TokenHourData @entity {
   # token address concatendated with date
   id: ID!
   # unix timestamp for start of hour
-  periodStartUnix: Int!
+  periodStartUnix: BigInt!
   # pointer to token
   token: Token!
   # volume in token units
