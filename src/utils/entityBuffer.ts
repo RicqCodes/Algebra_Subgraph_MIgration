@@ -58,8 +58,7 @@ export class EntityBuffer {
 
   static mergeEntities<E extends Entity>(target: E, source: E): void {
     // Define properties that should not be merged
-    const immutableProperties = ["id"]; // Add any other unique or immutable properties here
-
+    const immutableProperties = ["id"];
     Object.keys(source).forEach((key) => {
       if (immutableProperties.includes(key)) {
         // Skip merging for immutable properties
