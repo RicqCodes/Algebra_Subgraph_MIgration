@@ -18,7 +18,7 @@ Before getting started, ensure you have the following dependencies installed on 
 
 ## Quickstart
 
-Follow these steps to set up and run farcaster migration on your local machine:
+Follow these steps to set up and run Algebra migration on your local machine:
 
 ```bash
 # 0. Install @subsquid/cli globally (the sqd command)
