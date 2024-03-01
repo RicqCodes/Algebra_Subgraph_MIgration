@@ -243,15 +243,12 @@ export const handlePoolCreated = async (
   pool.collectedFeesUSD = ZERO_BD;
   pool.tick = BigInt("0");
 
-  console.log(token0.id, "token0 outside of any statement");
-  console.log(token1.id, "token1 outside of any statement");
-
-  // create the tracked contract based on the template
-  // PoolTemplate.create(event.params.pool);
+  // await ctx.store.upsert(token0)
+  // await ctx.store.upsert(token1)
   EntityBuffer.add(token0);
   EntityBuffer.add(token1);
+  EntityBuffer.add(pool);
   if (token0PoolWhitelist !== undefined) EntityBuffer.add(token0PoolWhitelist);
   if (token1PoolWhitelist != undefined) EntityBuffer.add(token1PoolWhitelist!);
-  EntityBuffer.add(pool);
   EntityBuffer.add(factory);
 };

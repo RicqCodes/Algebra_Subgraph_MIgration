@@ -127,7 +127,8 @@ export const loadTransaction = async (
   transaction.gasLimit = BigInt(log.transaction!.gas);
   transaction.gasPrice = BigInt(log.transaction!.gasPrice);
 
-  EntityBuffer.add(transaction);
-  // transaction.save();
+  // EntityBuffer.add(transaction);
+  await ctx.store.upsert(transaction);
+
   return transaction as Transaction;
 };

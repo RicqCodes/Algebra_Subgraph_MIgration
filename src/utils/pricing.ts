@@ -104,7 +104,10 @@ export const findEthPerToken = async (
       ) as Pool | undefined;
 
       if (!pool) {
-        pool = await ctx.store.get(Pool, poolAddress.split("-")[1]);
+        pool = await ctx.store.get(Pool, {
+          where: { id: poolAddress.split("-")[1] },
+          relations: { token0: true, token1: true },
+        });
       }
 
       if (BigDecimal(pool!.liquidity).gt(ZERO_BI)) {

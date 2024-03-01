@@ -28,13 +28,6 @@ export const createTick = async (
       relations: {
         token0: true,
         token1: true,
-        poolDayData: true,
-        poolHourData: true,
-        mints: true,
-        burns: true,
-        swaps: true,
-        collects: true,
-        ticks: true,
       },
     });
   }

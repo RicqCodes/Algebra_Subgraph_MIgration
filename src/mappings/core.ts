@@ -119,8 +119,6 @@ export const handleInitialize = async (
 
   EntityBuffer.add(token0!);
   EntityBuffer.add(token1!);
-  // token0.save();
-  // token1.save();
 };
 
 export const handleMint = async (

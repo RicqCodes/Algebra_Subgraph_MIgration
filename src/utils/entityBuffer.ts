@@ -5,6 +5,7 @@ interface Entity {
 export class EntityBuffer {
   // Using Map for efficient lookups and storage
   private static buffer: Map<string, Map<string, Entity>> | null = new Map();
+  static dependencyOrder: string[] = ["Token", "Pool", "Tick"];
 
   static get(entityType: string, entityId: string): Entity | undefined {
     if (!this.buffer) return undefined;
@@ -113,13 +114,74 @@ export class EntityBuffer {
 
   // Helper function to check if a value is a plain object
 
-  static flush() {
-    const values = Array.from(this.buffer!.values()).map((entities) =>
-      Array.from(entities.values())
+  //   static flush() {
+  //     const values = Array.from(this.buffer!.values()).map((entities) =>
+  //       Array.from(entities.values())
+  //     );
+  //     this.buffer!.clear();
+  //     this.buffer = null;
+  //     return values.flat();
+  //   }
+  // }
+
+  // static flush() {
+  //   if (!this.buffer) return [];
+
+  //   // Separate entities by type
+  //   const tokens = [];
+  //   const pools = [];
+  //   const others = [];
+
+  //   for (const [entityType, entities] of this.buffer.entries()) {
+  //     for (const entity of entities.values()) {
+  //       // Assuming entity type can be distinguished by the constructor name or a similar property
+  //       if (entityType === "Token") {
+  //         tokens.push(entity);
+  //       } else if (entityType === "Pool") {
+  //         pools.push(entity);
+  //       } else {
+  //         others.push(entity);
+  //       }
+  //     }
+  //   }
+
+  //   // Clear the buffer after segregating entities
+  //   this.buffer.clear();
+  //   this.buffer = null;
+
+  //   // Concatenate the arrays, ensuring tokens are first, then pools, then any other entities
+  //   // This is a simplistic approach; you may need a more sophisticated way to handle dependencies
+  //   // if there are more inter-entity dependencies in your application
+  //   return [...tokens, ...pools, ...others];
+  // }
+  static flush(): Entity[] {
+    if (!this.buffer) return [];
+
+    const orderedEntities: Entity[] = [];
+
+    // Explicitly type the containers to hold arrays of Entity
+    const typeContainers = new Map<string, Entity[]>(
+      this.dependencyOrder.map((type) => [type, []])
     );
-    this.buffer!.clear();
+    const defaultContainer: Entity[] = [];
+
+    // Distribute entities into their respective containers based on type
+    for (const [entityType, entities] of this.buffer.entries()) {
+      const container = typeContainers.get(entityType) || defaultContainer;
+      entities.forEach((entity) => container.push(entity));
+    }
+
+    // Assemble entities in order
+    this.dependencyOrder.forEach((type) => {
+      orderedEntities.push(...(typeContainers.get(type) || []));
+    });
+    orderedEntities.push(...defaultContainer);
+
+    // Clear the buffer
+    this.buffer.clear();
     this.buffer = null;
-    return values.flat();
+
+    return orderedEntities;
   }
 }
 
