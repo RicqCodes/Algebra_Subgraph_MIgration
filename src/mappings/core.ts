@@ -45,13 +45,15 @@ import { BlockContext } from "../abi/abi.support";
 
 export const handleInitialize = async (
   event: {
-    price: bigint;
-    tick: number;
+    data: {
+      price: bigint;
+      tick: number;
+    };
+    log: Log;
   },
-  log: Log,
   ctx: DataHandlerContext<Store>
 ): Promise<void> => {
-  const poolAddress = log.address.toLowerCase();
+  const poolAddress = event.log.address.toLowerCase();
   let pool: Pool | undefined = EntityBuffer.get("Pool", poolAddress) as
     | Pool
     | undefined;
@@ -62,14 +64,12 @@ export const handleInitialize = async (
       relations: {
         token0: true,
         token1: true,
-        poolDayData: true,
-        poolHourData: true,
       },
     });
   }
 
-  pool!.sqrtPrice = event.price;
-  pool!.tick = BigInt(event.tick);
+  pool!.sqrtPrice = event.data.price;
+  pool!.tick = BigInt(event.data.tick);
 
   EntityBuffer.add(pool!);
   // pool.save();
@@ -82,7 +82,7 @@ export const handleInitialize = async (
   if (!token0) {
     token0 = await ctx.store.get(Token, {
       where: { id: pool!.token0.id.toLowerCase() },
-      relations: { tokenDayData: true, whitelistPools: true },
+      relations: { whitelistPools: true },
     });
   }
   let token1: Token | undefined = EntityBuffer.get(
@@ -92,7 +92,7 @@ export const handleInitialize = async (
   if (!token1) {
     token1 = await ctx.store.get(Token, {
       where: { id: pool!.token1.id.toLowerCase() },
-      relations: { tokenDayData: true, whitelistPools: true },
+      relations: { whitelistPools: true },
     });
   }
 
@@ -108,10 +108,9 @@ export const handleInitialize = async (
   bundle!.maticPriceUSD = await getEthPriceInUSD(ctx);
 
   EntityBuffer.add(bundle!);
-  // bundle.save();
 
-  await updatePoolDayData(log, ctx);
-  await updatePoolHourData(log, ctx);
+  await updatePoolDayData(event.log, ctx);
+  await updatePoolHourData(event.log, ctx);
 
   // update token prices
   token0!.derivedMatic = await findEthPerToken(token0 as Token, ctx);
@@ -121,17 +120,24 @@ export const handleInitialize = async (
   EntityBuffer.add(token1!);
 };
 
+// updateTickFeeVarsAndSave called here
 export const handleMint = async (
   event: {
-    sender: string;
-    owner: string;
-    bottomTick: number;
-    topTick: number;
-    liquidityAmount: bigint;
-    amount0: bigint;
-    amount1: bigint;
+    data: {
+      sender: string;
+      owner: string;
+      bottomTick: number;
+      topTick: number;
+      liquidityAmount: bigint;
+      amount0: bigint;
+      amount1: bigint;
+    };
+    log: Log;
+    decoded: {
+      tick_low: any;
+      tick_high: any;
+    };
   },
-  log: Log,
   ctx: DataHandlerContext<Store>
 ): Promise<void> => {
   let bundle: Bundle | undefined = EntityBuffer.get("Bundle", "1") as
@@ -142,7 +148,7 @@ export const handleMint = async (
     bundle = await ctx.store.get(Bundle, "1");
   }
 
-  let poolAddress = log.address.toLowerCase();
+  let poolAddress = event.log.address.toLowerCase();
 
   let pool: Pool | undefined = EntityBuffer.get("Pool", poolAddress) as
     | Pool
@@ -150,12 +156,10 @@ export const handleMint = async (
 
   if (!pool) {
     pool = await ctx.store.get(Pool, {
-      where: { id: log.address.toLowerCase() },
+      where: { id: event.log.address.toLowerCase() },
       relations: {
         token0: true,
         token1: true,
-        poolDayData: true,
-        poolHourData: true,
       },
     });
   }
@@ -177,7 +181,7 @@ export const handleMint = async (
   if (!token0) {
     token0 = await ctx.store.get(Token, {
       where: { id: pool!.token0.id.toLowerCase() },
-      relations: { tokenDayData: true, whitelistPools: true },
+      relations: { whitelistPools: true },
     });
   }
 
@@ -189,16 +193,16 @@ export const handleMint = async (
   if (!token1) {
     token1 = await ctx.store.get(Token, {
       where: { id: pool!.token1.id.toLowerCase() },
-      relations: { tokenDayData: true, whitelistPools: true },
+      relations: { whitelistPools: true },
     });
   }
 
-  let amount0 = convertTokenToDecimal(event.amount0, token0!.decimals);
-  let amount1 = convertTokenToDecimal(event.amount1, token1!.decimals);
+  let amount0 = convertTokenToDecimal(event.data.amount0, token0!.decimals);
+  let amount1 = convertTokenToDecimal(event.data.amount1, token1!.decimals);
 
-  if (pools_list.includes(log.address)) {
-    amount0 = convertTokenToDecimal(event.amount1, token0!.decimals);
-    amount1 = convertTokenToDecimal(event.amount0, token1!.decimals);
+  if (pools_list.includes(event.log.address)) {
+    amount0 = convertTokenToDecimal(event.data.amount1, token0!.decimals);
+    amount1 = convertTokenToDecimal(event.data.amount0, token1!.decimals);
   }
 
   let amountUSD = amount0
@@ -236,11 +240,11 @@ export const handleMint = async (
   // We only want to update it on mint if the new position includes the current tick.
   if (
     (pool!.tick !== null || pool!.tick !== undefined) &&
-    BigDecimal(event.bottomTick).lte(pool!.tick) &&
-    BigDecimal(event.topTick).gt(pool!.tick)
+    BigDecimal(event.data.bottomTick).lte(pool!.tick) &&
+    BigDecimal(event.data.topTick).gt(pool!.tick)
   ) {
     pool!.liquidity = BigInt(
-      BigDecimal(pool!.liquidity).plus(event.liquidityAmount).toNumber()
+      BigDecimal(pool!.liquidity).plus(event.data.liquidityAmount).toNumber()
     );
   }
   pool!.totalValueLockedToken0 = pool!.totalValueLockedToken0.plus(amount0);
@@ -260,7 +264,7 @@ export const handleMint = async (
     bundle!.maticPriceUSD
   );
 
-  let transaction = await loadTransaction(log as UpdatedLog, ctx);
+  let transaction = await loadTransaction(event.log as UpdatedLog, ctx);
 
   let mint = new Mint({
     id:
@@ -271,24 +275,24 @@ export const handleMint = async (
   mint.timestamp = transaction.timestamp;
   mint.pool = pool!;
   mint.token0 = pool!.token1;
-  mint.owner = decodeHex(event.owner);
-  mint.sender = decodeHex(event.sender);
-  mint.origin = decodeHex(log.transaction!.from);
-  mint.amount = event.liquidityAmount;
+  mint.owner = decodeHex(event.data.owner);
+  mint.sender = decodeHex(event.data.sender);
+  mint.origin = decodeHex(event.log.transaction!.from);
+  mint.amount = event.data.liquidityAmount;
   mint.amount0 = amount0;
   mint.amount1 = amount1;
   mint.amountUSD = amountUSD;
-  mint.tickLower = BigInt(event.bottomTick);
-  mint.tickUpper = BigInt(event.topTick);
+  mint.tickLower = BigInt(event.data.bottomTick);
+  mint.tickUpper = BigInt(event.data.topTick);
 
   // tick entities
-  let lowerTickIdx = event.bottomTick;
-  let upperTickIdx = event.topTick;
+  let lowerTickIdx = event.data.bottomTick;
+  let upperTickIdx = event.data.topTick;
 
   let lowerTickId =
-    poolAddress.toLowerCase() + "#" + BigInt(event.bottomTick).toString();
+    poolAddress.toLowerCase() + "#" + BigInt(event.data.bottomTick).toString();
   let upperTickId =
-    poolAddress.toLowerCase() + "#" + BigInt(event.topTick).toString();
+    poolAddress.toLowerCase() + "#" + BigInt(event.data.topTick).toString();
 
   let lowerTick: Tick | undefined = EntityBuffer.get(
     "Tick",
@@ -315,14 +319,26 @@ export const handleMint = async (
   }
 
   if (!lowerTick) {
-    lowerTick = await createTick(lowerTickId, lowerTickIdx, pool!.id, log, ctx);
+    lowerTick = await createTick(
+      lowerTickId,
+      lowerTickIdx,
+      pool!.id,
+      event.log,
+      ctx
+    );
   }
 
   if (!upperTick) {
-    upperTick = await createTick(upperTickId, upperTickIdx, pool!.id, log, ctx);
+    upperTick = await createTick(
+      upperTickId,
+      upperTickIdx,
+      pool!.id,
+      event.log,
+      ctx
+    );
   }
 
-  let amount = event.liquidityAmount;
+  let amount = event.data.liquidityAmount;
   lowerTick.liquidityGross = BigInt(
     BigDecimal(lowerTick.liquidityGross).plus(amount).toNumber()
   );
@@ -338,13 +354,13 @@ export const handleMint = async (
 
   // TODO: Update Tick's volume, fees, and liquidity provider count
 
-  await updateAlgebraDayData(log, ctx);
-  await updatePoolDayData(log, ctx);
-  await updatePoolHourData(log, ctx);
-  await updateTokenDayData(token0 as Token, log, ctx);
-  await updateTokenDayData(token1 as Token, log, ctx);
-  await updateTokenHourData(token0 as Token, log, ctx);
-  await updateTokenHourData(token1 as Token, log, ctx);
+  await updateAlgebraDayData(event.log, ctx);
+  await updatePoolDayData(event.log, ctx);
+  await updatePoolHourData(event.log, ctx);
+  await updateTokenDayData(token0 as Token, event.log, ctx);
+  await updateTokenDayData(token1 as Token, event.log, ctx);
+  await updateTokenHourData(token0 as Token, event.log, ctx);
+  await updateTokenHourData(token1 as Token, event.log, ctx);
 
   EntityBuffer.add(token0!);
   EntityBuffer.add(token1!);
@@ -353,20 +369,37 @@ export const handleMint = async (
   EntityBuffer.add(mint);
 
   // Update inner tick vars and save the ticks
-  await updateTickFeeVarsAndSave(lowerTick, log, ctx);
-  await updateTickFeeVarsAndSave(upperTick, log, ctx);
+  await updateTickFeeVarsAndSave(
+    lowerTick,
+    event.log,
+    ctx,
+    event.decoded.tick_low
+  );
+  await updateTickFeeVarsAndSave(
+    upperTick,
+    event.log,
+    ctx,
+    event.decoded.tick_high
+  );
 };
 
+// updateTickFeeVarsAndSave called here
 export const handleBurn = async (
   event: {
-    owner: string;
-    bottomTick: number;
-    topTick: number;
-    liquidityAmount: bigint;
-    amount0: bigint;
-    amount1: bigint;
+    data: {
+      owner: string;
+      bottomTick: number;
+      topTick: number;
+      liquidityAmount: bigint;
+      amount0: bigint;
+      amount1: bigint;
+    };
+    log: Log;
+    decoded: {
+      tick_low: any;
+      tick_high: any;
+    };
   },
-  log: Log,
   ctx: DataHandlerContext<Store>
 ): Promise<void> => {
   let bundle: Bundle | undefined = EntityBuffer.get("Bundle", "1") as
@@ -377,7 +410,7 @@ export const handleBurn = async (
     bundle = await ctx.store.get(Bundle, "1");
   }
 
-  let poolAddress = log.address;
+  let poolAddress = event.log.address;
 
   let pool: Pool | undefined = EntityBuffer.get(
     "Pool",
@@ -386,7 +419,7 @@ export const handleBurn = async (
 
   if (!pool) {
     pool = await ctx.store.get(Pool, {
-      where: { id: log.address.toLowerCase() },
+      where: { id: event.log.address.toLowerCase() },
       relations: {
         token0: true,
         token1: true,
@@ -411,7 +444,7 @@ export const handleBurn = async (
   if (!token0) {
     token0 = await ctx.store.get(Token, {
       where: { id: pool!.token0.id.toLowerCase() },
-      relations: { tokenDayData: true, whitelistPools: true },
+      relations: { whitelistPools: true },
     });
   }
 
@@ -423,16 +456,16 @@ export const handleBurn = async (
   if (!token1) {
     token1 = await ctx.store.get(Token, {
       where: { id: pool!.token1.id.toLowerCase() },
-      relations: { tokenDayData: true, whitelistPools: true },
+      relations: { whitelistPools: true },
     });
   }
 
-  let amount0 = convertTokenToDecimal(event.amount0, token0!.decimals);
-  let amount1 = convertTokenToDecimal(event.amount1, token1!.decimals);
+  let amount0 = convertTokenToDecimal(event.data.amount0, token0!.decimals);
+  let amount1 = convertTokenToDecimal(event.data.amount1, token1!.decimals);
 
-  if (pools_list.includes(log.address)) {
-    amount0 = convertTokenToDecimal(event.amount1, token0!.decimals);
-    amount1 = convertTokenToDecimal(event.amount0, token1!.decimals);
+  if (pools_list.includes(event.log.address)) {
+    amount0 = convertTokenToDecimal(event.data.amount1, token0!.decimals);
+    amount1 = convertTokenToDecimal(event.data.amount0, token1!.decimals);
   }
 
   let amountUSD = amount0
@@ -469,11 +502,11 @@ export const handleBurn = async (
   // We only want to update it on burn if the position being burnt includes the current tick.
   if (
     (pool!.tick !== null || pool!.tick !== undefined) &&
-    BigDecimal(event.bottomTick).lte(pool!.tick) &&
-    BigDecimal(event.topTick).gt(pool!.tick)
+    BigDecimal(event.data.bottomTick).lte(pool!.tick) &&
+    BigDecimal(event.data.topTick).gt(pool!.tick)
   ) {
     pool!.liquidity = BigInt(
-      BigDecimal(pool!.liquidity).minus(event.liquidityAmount).toNumber()
+      BigDecimal(pool!.liquidity).minus(event.data.liquidityAmount).toNumber()
     );
   }
 
@@ -495,7 +528,7 @@ export const handleBurn = async (
   );
 
   // burn entity
-  let transaction = await loadTransaction(log as UpdatedLog, ctx);
+  let transaction = await loadTransaction(event.log as UpdatedLog, ctx);
   let burn = new Burn({
     id: transaction.id.toLowerCase() + "#" + pool!.txCount.toString(),
   });
@@ -504,24 +537,24 @@ export const handleBurn = async (
   burn.pool = pool!;
   burn.token0 = pool!.token0;
   burn.token1 = pool!.token1;
-  burn.owner = decodeHex(event.owner);
-  burn.origin = decodeHex(log.transaction!.from);
-  burn.amount = event.liquidityAmount;
+  burn.owner = decodeHex(event.data.owner);
+  burn.origin = decodeHex(event.log.transaction!.from);
+  burn.amount = event.data.liquidityAmount;
   burn.amount0 = amount0;
   burn.amount1 = amount1;
   burn.amountUSD = amountUSD;
-  burn.tickLower = BigInt(event.bottomTick);
-  burn.tickUpper = BigInt(event.topTick);
+  burn.tickLower = BigInt(event.data.bottomTick);
+  burn.tickUpper = BigInt(event.data.topTick);
 
   // tick entities
   let lowerTickId =
     poolAddress.toLowerCase() +
     "#" +
-    BigInt(event.bottomTick).toString().toLowerCase();
+    BigInt(event.data.bottomTick).toString().toLowerCase();
   let upperTickId =
     poolAddress.toLowerCase() +
     "#" +
-    BigInt(event.topTick).toString().toLowerCase();
+    BigInt(event.data.topTick).toString().toLowerCase();
 
   let lowerTick: Tick | undefined = EntityBuffer.get(
     "Tick",
@@ -547,7 +580,7 @@ export const handleBurn = async (
     });
   }
 
-  let amount = event.liquidityAmount;
+  let amount = event.data.liquidityAmount;
   lowerTick!.liquidityGross = BigInt(
     BigDecimal(lowerTick!.liquidityGross).minus(amount).toNumber()
   );
@@ -561,15 +594,25 @@ export const handleBurn = async (
     BigDecimal(upperTick!.liquidityNet).plus(amount).toNumber()
   );
 
-  await updateAlgebraDayData(log, ctx);
-  await updatePoolDayData(log, ctx);
-  await updatePoolHourData(log, ctx);
-  await updateTokenDayData(token0 as Token, log, ctx);
-  await updateTokenDayData(token1 as Token, log, ctx);
-  await updateTokenHourData(token0 as Token, log, ctx);
-  await updateTokenHourData(token1 as Token, log, ctx);
-  await updateTickFeeVarsAndSave(lowerTick!, log, ctx);
-  await updateTickFeeVarsAndSave(upperTick!, log, ctx);
+  await updateAlgebraDayData(event.log, ctx);
+  await updatePoolDayData(event.log, ctx);
+  await updatePoolHourData(event.log, ctx);
+  await updateTokenDayData(token0 as Token, event.log, ctx);
+  await updateTokenDayData(token1 as Token, event.log, ctx);
+  await updateTokenHourData(token0 as Token, event.log, ctx);
+  await updateTokenHourData(token1 as Token, event.log, ctx);
+  await updateTickFeeVarsAndSave(
+    lowerTick!,
+    event.log,
+    ctx,
+    event.decoded.tick_low
+  );
+  await updateTickFeeVarsAndSave(
+    upperTick!,
+    event.log,
+    ctx,
+    event.decoded.tick_high
+  );
 
   EntityBuffer.add(token0!);
   EntityBuffer.add(token1!);
@@ -578,17 +621,24 @@ export const handleBurn = async (
   EntityBuffer.add(burn!);
 };
 
+// loadTickUpdateFeeVarsAndSave called here
 export const handleSwap = async (
   event: {
-    sender: string;
-    recipient: string;
-    amount0: bigint;
-    amount1: bigint;
-    price: bigint;
-    liquidity: bigint;
-    tick: number;
+    data: {
+      sender: string;
+      recipient: string;
+      amount0: bigint;
+      amount1: bigint;
+      price: bigint;
+      liquidity: bigint;
+      tick: number;
+    };
+    log: Log;
+    decoded: {
+      totalFeeGrowth0Token: any;
+      totalFeeGrowth1Token: any;
+    };
   },
-  log: Log,
   ctx: DataHandlerContext<Store>
 ): Promise<void> => {
   let bundle: Bundle | undefined = EntityBuffer.get("Bundle", "1") as
@@ -610,12 +660,12 @@ export const handleSwap = async (
 
   let pool: Pool | undefined = EntityBuffer.get(
     "Pool",
-    log.address.toLowerCase()
+    event.log.address.toLowerCase()
   ) as Pool | undefined;
 
   if (!pool) {
     pool = await ctx.store.get(Pool, {
-      where: { id: log.address.toLowerCase() },
+      where: { id: event.log.address.toLowerCase() },
       relations: {
         token0: true,
         token1: true,
@@ -634,7 +684,7 @@ export const handleSwap = async (
   if (!token0) {
     token0 = await ctx.store.get(Token, {
       where: { id: pool!.token0.id.toLowerCase() },
-      relations: { tokenDayData: true, whitelistPools: true },
+      relations: { whitelistPools: true },
     });
   }
 
@@ -646,16 +696,16 @@ export const handleSwap = async (
   if (!token1) {
     token1 = await ctx.store.get(Token, {
       where: { id: pool!.token1.id.toLowerCase() },
-      relations: { tokenDayData: true, whitelistPools: true },
+      relations: { whitelistPools: true },
     });
   }
 
-  let amount0 = convertTokenToDecimal(event.amount0, token0!.decimals);
-  let amount1 = convertTokenToDecimal(event.amount1, token1!.decimals);
+  let amount0 = convertTokenToDecimal(event.data.amount0, token0!.decimals);
+  let amount1 = convertTokenToDecimal(event.data.amount1, token1!.decimals);
 
-  if (pools_list.includes(log.address)) {
-    amount0 = convertTokenToDecimal(event.amount1, token0!.decimals);
-    amount1 = convertTokenToDecimal(event.amount0, token1!.decimals);
+  if (pools_list.includes(event.log.address)) {
+    amount0 = convertTokenToDecimal(event.data.amount1, token0!.decimals);
+    amount1 = convertTokenToDecimal(event.data.amount0, token1!.decimals);
   }
 
   // need absolute amounts for volume
@@ -755,9 +805,9 @@ export const handleSwap = async (
   pool!.txCount = BigInt(BigDecimal(pool!.txCount).plus(ONE_BI).toNumber());
 
   // Update the pool! with the new active liquidity, price, and tick.
-  pool!.liquidity = event.liquidity;
-  pool!.tick = BigInt(event.tick);
-  pool!.sqrtPrice = event.price;
+  pool!.liquidity = event.data.liquidity;
+  pool!.tick = BigInt(event.data.tick);
+  pool!.sqrtPrice = event.data.price;
   pool!.totalValueLockedToken0 = pool!.totalValueLockedToken0.plus(amount0);
   pool!.totalValueLockedToken1 = pool!.totalValueLockedToken1.plus(amount1);
 
@@ -790,7 +840,7 @@ export const handleSwap = async (
   pool!.token0Price = prices[0];
   pool!.token1Price = prices[1];
 
-  if (pools_list.includes(log.address)) {
+  if (pools_list.includes(event.log.address)) {
     prices = priceToTokenPrices(
       pool!.sqrtPrice,
       token1 as Token,
@@ -834,7 +884,7 @@ export const handleSwap = async (
     .times(bundle!.maticPriceUSD);
 
   // create Swap event
-  let transaction = await loadTransaction(log as UpdatedLog, ctx);
+  let transaction = await loadTransaction(event.log as UpdatedLog, ctx);
   let swap = new Swap({
     id: transaction.id.toLowerCase() + "#" + pool!.txCount.toString(),
   });
@@ -843,41 +893,56 @@ export const handleSwap = async (
   swap.pool! = pool!;
   swap.token0 = pool!.token0;
   swap.token1 = pool!.token1;
-  swap.sender = decodeHex(event.sender);
-  swap.origin = decodeHex(log.transaction!.from);
-  swap.liquidity = event.liquidity;
-  swap.recipient = decodeHex(event.recipient);
+  swap.sender = decodeHex(event.data.sender);
+  swap.origin = decodeHex(event.log.transaction!.from);
+  swap.liquidity = event.data.liquidity;
+  swap.recipient = decodeHex(event.data.recipient);
   swap.amount0 = amount0;
   swap.amount1 = amount1;
   swap.amountUSD = amountTotalUSDTracked;
-  swap.tick = BigInt(event.tick);
-  swap.price = event.price;
+  swap.tick = BigInt(event.data.tick);
+  swap.price = event.data.price;
 
   // update fee growth
-  let lastBatchBlockHeader = { height: log.block.height };
-  const ctxContract: BlockContext = {
-    _chain: ctx._chain,
-    block: lastBatchBlockHeader,
-  };
+  // let lastBatchBlockHeader = { height: event.log.block.height };
+  // const ctxContract: BlockContext = {
+  //   _chain: ctx._chain,
+  //   block: lastBatchBlockHeader,
+  // };
 
-  let poolContract = new PoolABI(
-    ctxContract,
-    lastBatchBlockHeader,
-    log.address
-  );
-  let feeGrowthGlobal0X128 = await poolContract.totalFeeGrowth0Token();
-  let feeGrowthGlobal1X128 = await poolContract.totalFeeGrowth1Token();
-  pool!.feeGrowthGlobal0X128 = feeGrowthGlobal0X128;
-  pool!.feeGrowthGlobal1X128 = feeGrowthGlobal1X128;
+  // let poolContract = new PoolABI(
+  //   ctxContract,
+  //   lastBatchBlockHeader,
+  //   event.log.address
+  // );
+  // let feeGrowthGlobal0X128 = await poolContract.totalFeeGrowth0Token();
+  // let feeGrowthGlobal1X128 = await poolContract.totalFeeGrowth1Token();
+  // console.log(
+  //   event.decoded.totalFeeGrowth0Token,
+  //   event.decoded.totalFeeGrowth1Token,
+  //   "totalFeeGrowth0Token, totalFeeGrowth1Token"
+  // );
+  pool!.feeGrowthGlobal0X128 = event.decoded.totalFeeGrowth0Token;
+  pool!.feeGrowthGlobal1X128 = event.decoded.totalFeeGrowth1Token;
+  // pool!.feeGrowthGlobal0X128 = feeGrowthGlobal0X128;
+  // pool!.feeGrowthGlobal1X128 = feeGrowthGlobal1X128;
 
   // interval data
-  let algebraDayData = await updateAlgebraDayData(log, ctx);
-  let poolDayData = await updatePoolDayData(log, ctx);
-  let poolHourData = await updatePoolHourData(log, ctx);
-  let token0DayData = await updateTokenDayData(token0 as Token, log, ctx);
-  let token1DayData = await updateTokenDayData(token1 as Token, log, ctx);
-  let token0HourData = await updateTokenHourData(token0 as Token, log, ctx);
-  let token1HourData = await updateTokenHourData(token1 as Token, log, ctx);
+  let algebraDayData = await updateAlgebraDayData(event.log, ctx);
+  let poolDayData = await updatePoolDayData(event.log, ctx);
+  let poolHourData = await updatePoolHourData(event.log, ctx);
+  let token0DayData = await updateTokenDayData(token0 as Token, event.log, ctx);
+  let token1DayData = await updateTokenDayData(token1 as Token, event.log, ctx);
+  let token0HourData = await updateTokenHourData(
+    token0 as Token,
+    event.log,
+    ctx
+  );
+  let token1HourData = await updateTokenHourData(
+    token1 as Token,
+    event.log,
+    ctx
+  );
 
   if (amount0.lt(ZERO_BD)) {
     pool!.feesToken1 = pool!.feesToken1.plus(
@@ -970,7 +1035,7 @@ export const handleSwap = async (
   let modulo = BigDecimal(newTick).mod(TICK_SPACING);
   if (modulo.eq(ZERO_BI)) {
     // Current tick is initialized and needs to be updated
-    await loadTickUpdateFeeVarsAndSave(Number(newTick), log, ctx);
+    await loadTickUpdateFeeVarsAndSave(Number(newTick), event.log, ctx);
   }
 
   let numIters = BigDecimal(oldTick).minus(newTick).abs().div(TICK_SPACING);
@@ -986,62 +1051,63 @@ export const handleSwap = async (
       BigDecimal(TICK_SPACING).minus(modulo)
     );
     for (let i = firstInitialized; i.lte(newTick); i = i.plus(TICK_SPACING)) {
-      await loadTickUpdateFeeVarsAndSave(i.toNumber(), log, ctx);
+      await loadTickUpdateFeeVarsAndSave(i.toNumber(), event.log, ctx);
     }
   } else if (BigDecimal(newTick).lt(oldTick)) {
     let firstInitialized = BigDecimal(oldTick).minus(modulo);
     for (let i = firstInitialized; i.gte(newTick); i = i.minus(TICK_SPACING)) {
-      await loadTickUpdateFeeVarsAndSave(i.toNumber(), log, ctx);
+      await loadTickUpdateFeeVarsAndSave(i.toNumber(), event.log, ctx);
     }
   }
 };
 
 export const handleSetCommunityFee = async (
   event: {
-    communityFee0New: number;
-    communityFee1New: number;
+    data: {
+      communityFee0New: number;
+      communityFee1New: number;
+    };
+    log: Log;
   },
-  log: Log,
   ctx: DataHandlerContext<Store>
 ): Promise<void> => {
   let pool: Pool | undefined = EntityBuffer.get(
     "Pool",
-    log.address.toLowerCase()
+    event.log.address.toLowerCase()
   ) as Pool | undefined;
 
   if (!pool) {
     pool = await ctx.store.get(Pool, {
-      where: { id: log.address.toLowerCase() },
+      where: { id: event.log.address.toLowerCase() },
       relations: {
         token0: true,
         token1: true,
-        poolDayData: true,
-        poolHourData: true,
       },
     });
   }
 
   if (pool) {
-    pool.communityFee0 = BigInt(event.communityFee0New);
-    pool.communityFee1 = BigInt(event.communityFee1New);
-
+    pool.communityFee0 = BigInt(event.data.communityFee0New);
+    pool.communityFee1 = BigInt(event.data.communityFee1New);
     EntityBuffer.add(pool);
   }
 };
 
 export const handleCollect = async (
   event: {
-    owner: string;
-    recipient: string;
-    bottomTick: number;
-    topTick: number;
-    amount0: bigint;
-    amount1: bigint;
+    data: {
+      owner: string;
+      recipient: string;
+      bottomTick: number;
+      topTick: number;
+      amount0: bigint;
+      amount1: bigint;
+    };
+    log: Log;
   },
-  log: Log,
   ctx: DataHandlerContext<Store>
 ): Promise<void> => {
-  let transaction = await loadTransaction(log as UpdatedLog, ctx);
+  let transaction = await loadTransaction(event.log as UpdatedLog, ctx);
 
   let bundle: Bundle | undefined = EntityBuffer.get("Bundle", "1") as
     | Bundle
@@ -1051,7 +1117,7 @@ export const handleCollect = async (
     bundle = await ctx.store.get(Bundle, "1");
   }
 
-  const poolAddress = log.address.toLowerCase();
+  const poolAddress = event.log.address.toLowerCase();
 
   let pool: Pool | undefined = EntityBuffer.get(
     "Pool",
@@ -1064,8 +1130,6 @@ export const handleCollect = async (
       relations: {
         token0: true,
         token1: true,
-        poolDayData: true,
-        poolHourData: true,
       },
     });
   }
@@ -1087,7 +1151,7 @@ export const handleCollect = async (
   if (!token0) {
     token0 = await ctx.store.get(Token, {
       where: { id: pool!.token0.id.toLowerCase() },
-      relations: { tokenDayData: true, whitelistPools: true },
+      relations: { whitelistPools: true },
     });
   }
 
@@ -1099,12 +1163,12 @@ export const handleCollect = async (
   if (!token1) {
     token1 = await ctx.store.get(Token, {
       where: { id: pool!.token1.id.toLowerCase() },
-      relations: { tokenDayData: true, whitelistPools: true },
+      relations: { whitelistPools: true },
     });
   }
 
-  let amount0 = convertTokenToDecimal(event.amount0, token0!.decimals);
-  let amount1 = convertTokenToDecimal(event.amount1, token1!.decimals);
+  let amount0 = convertTokenToDecimal(event.data.amount0, token0!.decimals);
+  let amount1 = convertTokenToDecimal(event.data.amount1, token1!.decimals);
 
   if (transaction) {
     let burn = EntityBuffer.get(
@@ -1203,40 +1267,42 @@ export const handleCollect = async (
 const updateTickFeeVarsAndSave = async (
   tick: Tick,
   log: Log,
-  ctx: DataHandlerContext<Store>
+  ctx: DataHandlerContext<Store>,
+  tickResult?: any
 ): Promise<void> => {
   let poolAddress = log.address;
 
-  let lastBatchBlockHeader = { height: log.block.height };
+  if (!tickResult) {
+    let lastBatchBlockHeader = { height: log.block.height };
+    const ctxContract: BlockContext = {
+      _chain: ctx._chain,
+      block: lastBatchBlockHeader,
+    };
 
-  const ctxContract: BlockContext = {
-    _chain: ctx._chain,
-    block: lastBatchBlockHeader,
-  };
+    let poolContract = new PoolABI(
+      ctxContract,
+      lastBatchBlockHeader,
+      poolAddress
+    );
+    tickResult = await poolContract.ticks(Number(tick.tickIdx));
+  }
 
-  let poolContract = new PoolABI(
-    ctxContract,
-    lastBatchBlockHeader,
-    poolAddress
-  );
-
-  let tickResult = await poolContract.ticks(Number(tick.tickIdx));
-  tick.feeGrowthOutside0X128 = tickResult.outerFeeGrowth0Token;
-  tick.feeGrowthOutside1X128 = tickResult.outerFeeGrowth0Token;
-
+  tick.feeGrowthOutside0X128 = tickResult[2];
+  tick.feeGrowthOutside1X128 = tickResult[3];
   EntityBuffer.add(tick);
-
   await updateTickDayData(tick, log, ctx);
 };
 
 export const handleChangeFee = async (
   event: {
-    fee: number;
+    data: {
+      fee: number;
+    };
+    log: Log;
   },
-  log: Log,
   ctx: DataHandlerContext<Store>
 ): Promise<void> => {
-  const poolAddress = log.address.toLowerCase();
+  const poolAddress = event.log.address.toLowerCase();
   let pool: Pool | undefined = EntityBuffer.get("Pool", poolAddress) as
     | Pool
     | undefined;
@@ -1251,36 +1317,37 @@ export const handleChangeFee = async (
     });
   }
 
-  pool!.fee = BigInt(event.fee);
+  pool!.fee = BigInt(event.data.fee);
 
   EntityBuffer.add(pool!);
   let fee: PoolFeeData | undefined = EntityBuffer.get(
     "PoolFeeData",
-    poolAddress + "#" + log.block.timestamp.toString()
+    poolAddress + "#" + event.log.block.timestamp.toString()
   ) as PoolFeeData | undefined;
 
   if (!fee) {
     fee = await ctx.store.get(
       PoolFeeData,
-      poolAddress + "#" + log.block.timestamp.toString()
+      poolAddress + "#" + event.log.block.timestamp.toString()
     );
   }
 
   if (!fee) {
     fee = new PoolFeeData({
-      id: log.block.timestamp.toString() + poolAddress,
+      id: event.log.block.timestamp.toString() + poolAddress,
     });
     fee.pool = poolAddress;
-    fee.fee = BigInt(event.fee);
-    fee.timestamp = BigInt(log.block.timestamp);
+    fee.fee = BigInt(event.data.fee);
+    fee.timestamp = BigInt(event.log.block.timestamp);
   } else {
-    fee.fee = BigInt(event.fee);
+    fee.fee = BigInt(event.data.fee);
   }
-  await updateFeeHourData(log, ctx, BigInt(event.fee));
+  await updateFeeHourData(event.log, ctx, BigInt(event.data.fee));
 
   EntityBuffer.add(fee);
 };
 
+// updateTickFeeVarsAndSave called here
 const loadTickUpdateFeeVarsAndSave = async (
   tickId: number,
   log: Log,

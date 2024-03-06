@@ -119,10 +119,7 @@ export const findEthPerToken = async (
           ) as Token | undefined;
 
           if (!token1) {
-            token1 = await ctx.store.get(Token, {
-              where: { id: pool!.token1.id.toLowerCase() },
-              relations: { tokenDayData: true, whitelistPools: true },
-            });
+            token1 = await ctx.store.get(Token, pool!.token1.id.toLowerCase());
           }
 
           // get the derived Matic in pool
@@ -147,10 +144,7 @@ export const findEthPerToken = async (
           ) as Token | undefined;
 
           if (!token0) {
-            token0 = await ctx.store.get(Token, {
-              where: { id: pool!.token0.id.toLowerCase() },
-              relations: { tokenDayData: true, whitelistPools: true },
-            });
+            token0 = await ctx.store.get(Token, pool!.token0.id.toLowerCase());
           }
 
           // get the derived Matic in pool

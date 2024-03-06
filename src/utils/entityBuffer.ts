@@ -5,7 +5,13 @@ interface Entity {
 export class EntityBuffer {
   // Using Map for efficient lookups and storage
   private static buffer: Map<string, Map<string, Entity>> | null = new Map();
-  static dependencyOrder: string[] = ["Token", "Pool", "Tick"];
+  static dependencyOrder: string[] = [
+    "Token",
+    "Pool",
+    "Tick",
+    "Transaction",
+    "Position",
+  ];
 
   static get(entityType: string, entityId: string): Entity | undefined {
     if (!this.buffer) return undefined;
@@ -31,31 +37,6 @@ export class EntityBuffer {
       entities.set(entity.id, entity);
     }
   }
-
-  // static mergeEntities<E extends Entity>(target: E, source: E): void {
-  //   Object.keys(source).forEach((key) => {
-  //     const targetValue = target[key as keyof E];
-  //     const sourceValue = source[key as keyof E];
-
-  //     if (Array.isArray(targetValue) && Array.isArray(sourceValue)) {
-  //       // Efficiently handle array merging without unnecessary deduplication
-  //       target[key as keyof E] = [
-  //         ...new Set([...targetValue, ...sourceValue]),
-  //       ] as any;
-  //     } else if (isPlainObject(targetValue) && isPlainObject(sourceValue)) {
-  //       // Correctly perform a deep merge by updating the target object directly
-  //       // Ensure both targetValue and sourceValue are treated as Entity for recursive merging
-  //       if (!isPlainObject(target[key as keyof E])) {
-  //         // Initialize target[key] as an object if it's not already an object
-  //         target[key as keyof E] = {} as any;
-  //       }
-  //       // Recursively merge nested objects without returning and spreading
-  //       this.mergeEntities(targetValue as any, sourceValue as any);
-  //     } else {
-  //       target[key as keyof E] = sourceValue;
-  //     }
-  //   });
-  // }
 
   static mergeEntities<E extends Entity>(target: E, source: E): void {
     // Define properties that should not be merged
@@ -112,48 +93,6 @@ export class EntityBuffer {
     });
   }
 
-  // Helper function to check if a value is a plain object
-
-  //   static flush() {
-  //     const values = Array.from(this.buffer!.values()).map((entities) =>
-  //       Array.from(entities.values())
-  //     );
-  //     this.buffer!.clear();
-  //     this.buffer = null;
-  //     return values.flat();
-  //   }
-  // }
-
-  // static flush() {
-  //   if (!this.buffer) return [];
-
-  //   // Separate entities by type
-  //   const tokens = [];
-  //   const pools = [];
-  //   const others = [];
-
-  //   for (const [entityType, entities] of this.buffer.entries()) {
-  //     for (const entity of entities.values()) {
-  //       // Assuming entity type can be distinguished by the constructor name or a similar property
-  //       if (entityType === "Token") {
-  //         tokens.push(entity);
-  //       } else if (entityType === "Pool") {
-  //         pools.push(entity);
-  //       } else {
-  //         others.push(entity);
-  //       }
-  //     }
-  //   }
-
-  //   // Clear the buffer after segregating entities
-  //   this.buffer.clear();
-  //   this.buffer = null;
-
-  //   // Concatenate the arrays, ensuring tokens are first, then pools, then any other entities
-  //   // This is a simplistic approach; you may need a more sophisticated way to handle dependencies
-  //   // if there are more inter-entity dependencies in your application
-  //   return [...tokens, ...pools, ...others];
-  // }
   static flush(): Entity[] {
     if (!this.buffer) return [];
 

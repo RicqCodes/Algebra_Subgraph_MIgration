@@ -37,6 +37,8 @@ export const events = {
     ),
 }
 
+
+
 export const functions = {
     activeIncentive: new Func<[], {}, string>(
         abi, '0xfacb0eb1'

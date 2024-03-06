@@ -17,10 +17,12 @@ import { BlockContext } from "../abi/abi.support";
 import { UpdatedLog } from "../utils/interfaces";
 import { BigDecimal } from "@subsquid/big-decimal";
 
+// calling blockchain for update
 const getPosition = async (
   log: Log,
   ctx: DataHandlerContext<Store>,
-  tokenId: BigInt
+  tokenId: BigInt,
+  positionResult: any[]
 ): Promise<Position | undefined> => {
   let position: Position | undefined = EntityBuffer.get(
     "Position",
@@ -41,18 +43,18 @@ const getPosition = async (
   }
 
   if (!position) {
-    let lastBatchBlockHeader = { height: log.block.height };
-    const ctxContract: BlockContext = {
-      _chain: ctx._chain,
-      block: lastBatchBlockHeader,
-    };
+    // let lastBatchBlockHeader = { height: log.block.height };
+    // const ctxContract: BlockContext = {
+    //   _chain: ctx._chain,
+    //   block: lastBatchBlockHeader,
+    // };
 
-    let contract = new NonfungiblePositionManager(
-      ctxContract,
-      lastBatchBlockHeader,
-      log.address
-    );
-    let positionResult = await contract.positions(BigInt(tokenId.toString()));
+    // let contract = new NonfungiblePositionManager(
+    //   ctxContract,
+    //   lastBatchBlockHeader,
+    //   log.address
+    // );
+    // let positionResult = await contract.positions(BigInt(tokenId.toString()));
 
     // the following call reverts in situations where the position is minted
     // and deleted in the same block
@@ -62,6 +64,8 @@ const getPosition = async (
         _chain: ctx._chain,
         block: lastBatchBlockHeader,
       };
+
+      // positionResult[2];
 
       let factoryContract = new FactoryContract(
         ctxContract,
@@ -195,26 +199,25 @@ const getPosition = async (
   return position;
 };
 
+// calling blockchain for update
 const updateFeeVars = async (
   position: Position,
-  log: Log,
-  ctx: DataHandlerContext<Store>,
-  tokenId: BigInt
+  positionResult: any
 ): Promise<Position> => {
-  let lastBatchBlockHeader = ctx.blocks[ctx.blocks.length - 1].header;
-  const ctxContract: BlockContext = {
-    _chain: ctx._chain,
-    block: lastBatchBlockHeader,
-  };
+  // let lastBatchBlockHeader = ctx.blocks[ctx.blocks.length - 1].header;
+  // const ctxContract: BlockContext = {
+  //   _chain: ctx._chain,
+  //   block: lastBatchBlockHeader,
+  // };
 
-  let positionManagerContract = new NonfungiblePositionManager(
-    ctxContract,
-    lastBatchBlockHeader,
-    log.address
-  );
-  let positionResult = await positionManagerContract.positions(
-    BigInt(tokenId.toString())
-  );
+  // let positionManagerContract = new NonfungiblePositionManager(
+  //   ctxContract,
+  //   lastBatchBlockHeader,
+  //   log.address
+  // );
+  // let positionResult = await positionManagerContract.positions(
+  //   BigInt(tokenId.toString())
+  // );
   if (positionResult) {
     position.feeGrowthInside0LastX128 = positionResult[7];
     position.feeGrowthInside1LastX128 = positionResult[8];
@@ -271,19 +274,30 @@ const savePositionSnapshot = async (
   EntityBuffer.add(positionSnapshot);
 };
 
+// calling getPosition - that calls blockchain for update
 export const handleIncreaseLiquidity = async (
   event: {
-    tokenId: bigint;
-    liquidity: bigint;
-    actualLiquidity: bigint;
-    amount0: bigint;
-    amount1: bigint;
-    pool: string;
+    data: {
+      tokenId: bigint;
+      liquidity: bigint;
+      actualLiquidity: bigint;
+      amount0: bigint;
+      amount1: bigint;
+      pool: string;
+    };
+    log: Log;
+    decoded: {
+      positions: any;
+    };
   },
-  log: Log,
   ctx: DataHandlerContext<Store>
 ): Promise<void> => {
-  let position = await getPosition(log, ctx, event.tokenId);
+  let position = await getPosition(
+    event.log,
+    ctx,
+    event.data.tokenId,
+    event.decoded.positions
+  );
 
   // position was not able to be fetched
   if (!position) {
@@ -314,15 +328,15 @@ export const handleIncreaseLiquidity = async (
   let amount0 = ZERO_BD;
 
   if (pools_list.includes(position.pool.id))
-    amount0 = convertTokenToDecimal(event.amount1, token0!.decimals);
-  else amount0 = convertTokenToDecimal(event.amount0, token0!.decimals);
+    amount0 = convertTokenToDecimal(event.data.amount1, token0!.decimals);
+  else amount0 = convertTokenToDecimal(event.data.amount0, token0!.decimals);
 
   if (pools_list.includes(position.pool.id))
-    amount1 = convertTokenToDecimal(event.amount0, token1!.decimals);
-  else amount1 = convertTokenToDecimal(event.amount1, token1!.decimals);
+    amount1 = convertTokenToDecimal(event.data.amount0, token1!.decimals);
+  else amount1 = convertTokenToDecimal(event.data.amount1, token1!.decimals);
 
   position.liquidity = BigInt(
-    BigDecimal(position.liquidity).plus(event.liquidity).toNumber()
+    BigDecimal(position.liquidity).plus(event.data.liquidity).toNumber()
   );
   position.depositedToken0 = position.depositedToken0.plus(amount0);
   position.depositedToken1 = position.depositedToken1.plus(amount1);
@@ -331,20 +345,31 @@ export const handleIncreaseLiquidity = async (
 
   EntityBuffer.add(position);
 
-  await savePositionSnapshot(position, log, ctx);
+  await savePositionSnapshot(position, event.log, ctx);
 };
 
+// calling getPosition & updateFeeVars - that both calls blockchain for update
 export const handleDecreaseLiquidity = async (
   event: {
-    tokenId: bigint;
-    liquidity: bigint;
-    amount0: bigint;
-    amount1: bigint;
+    data: {
+      tokenId: bigint;
+      liquidity: bigint;
+      amount0: bigint;
+      amount1: bigint;
+    };
+    log: Log;
+    decoded: {
+      positions: any;
+    };
   },
-  log: Log,
   ctx: DataHandlerContext<Store>
 ): Promise<void> => {
-  let position = await getPosition(log, ctx, event.tokenId);
+  let position = await getPosition(
+    event.log,
+    ctx,
+    event.data.tokenId,
+    event.decoded.positions
+  );
 
   // position was not able to be fetched
   if (!position) {
@@ -375,38 +400,50 @@ export const handleDecreaseLiquidity = async (
   let amount0 = ZERO_BD;
 
   if (pools_list.includes(position.pool.id.toLowerCase()))
-    amount0 = convertTokenToDecimal(event.amount1, token0!.decimals);
-  else amount0 = convertTokenToDecimal(event.amount0, token0!.decimals);
+    amount0 = convertTokenToDecimal(event.data.amount1, token0!.decimals);
+  else amount0 = convertTokenToDecimal(event.data.amount0, token0!.decimals);
 
   if (pools_list.includes(position.pool.id.toLowerCase()))
-    amount1 = convertTokenToDecimal(event.amount0, token1!.decimals);
-  else amount1 = convertTokenToDecimal(event.amount1, token1!.decimals);
+    amount1 = convertTokenToDecimal(event.data.amount0, token1!.decimals);
+  else amount1 = convertTokenToDecimal(event.data.amount1, token1!.decimals);
 
   position.liquidity = BigInt(
-    BigDecimal(position.liquidity).minus(event.liquidity).toNumber()
+    BigDecimal(position.liquidity).minus(event.data.liquidity).toNumber()
   );
   position.withdrawnToken0 = position.withdrawnToken0.plus(amount0);
   position.withdrawnToken1 = position.withdrawnToken1.plus(amount1);
 
-  position = await updateFeeVars(position, log, ctx, event.tokenId);
+  position = await updateFeeVars(position, event.decoded.positions);
+
   // recalculatePosition(position)
 
   EntityBuffer.add(position);
 
-  await savePositionSnapshot(position, log, ctx);
+  await savePositionSnapshot(position, event.log, ctx);
 };
 
+// calling getPosition & updateFeeVars - that both calls blockchain for update
 export const handleCollectManager = async (
   event: {
-    tokenId: bigint;
-    recipient: string;
-    amount0: bigint;
-    amount1: bigint;
+    data: {
+      tokenId: bigint;
+      recipient: string;
+      amount0: bigint;
+      amount1: bigint;
+    };
+    log: Log;
+    decoded: {
+      positions: any;
+    };
   },
-  log: Log,
   ctx: DataHandlerContext<Store>
 ): Promise<void> => {
-  let position = await getPosition(log, ctx, event.tokenId);
+  let position = await getPosition(
+    event.log,
+    ctx,
+    event.data.tokenId,
+    event.decoded.positions
+  );
 
   // position was not able to be fetched
   if (!position) {
@@ -437,12 +474,12 @@ export const handleCollectManager = async (
   let amount0 = ZERO_BD;
 
   if (pools_list.includes(position.pool.id.toLowerCase()))
-    amount0 = convertTokenToDecimal(event.amount1, token0!.decimals);
-  else amount0 = convertTokenToDecimal(event.amount0, token0!.decimals);
+    amount0 = convertTokenToDecimal(event.data.amount1, token0!.decimals);
+  else amount0 = convertTokenToDecimal(event.data.amount0, token0!.decimals);
 
   if (pools_list.includes(position.pool.id.toLowerCase()))
-    amount1 = convertTokenToDecimal(event.amount0, token1!.decimals);
-  else amount1 = convertTokenToDecimal(event.amount1, token1!.decimals);
+    amount1 = convertTokenToDecimal(event.data.amount0, token1!.decimals);
+  else amount1 = convertTokenToDecimal(event.data.amount1, token1!.decimals);
 
   position.collectedToken0 = position.collectedToken0.plus(amount0);
   position.collectedToken1 = position.collectedToken1.plus(amount1);
@@ -454,33 +491,42 @@ export const handleCollectManager = async (
     position.withdrawnToken1
   );
 
-  position = await updateFeeVars(position, log, ctx, event.tokenId);
+  position = await updateFeeVars(position, event.decoded.positions);
 
   // recalculatePosition(position)
 
   EntityBuffer.add(position);
 
-  await savePositionSnapshot(position, log, ctx);
+  await savePositionSnapshot(position, event.log, ctx);
 };
 
+// calling getPosition - that calls blockchain for update
 export const handleTransfer = async (
   event: {
-    from: string;
-    to: string;
-    tokenId: bigint;
+    data: {
+      from: string;
+      to: string;
+      tokenId: bigint;
+    };
+    log: Log;
+    decoded: {
+      positions: any;
+    };
   },
-  log: Log,
   ctx: DataHandlerContext<Store>
 ): Promise<void> => {
-  let position = await getPosition(log, ctx, event.tokenId);
+  let position = await getPosition(
+    event.log,
+    ctx,
+    event.data.tokenId,
+    event.decoded.positions
+  );
   // position was not able to be fetched
   if (!position) {
     return;
   }
 
-  position.owner = decodeHex(event.to);
-
+  position.owner = decodeHex(event.data.to);
   EntityBuffer.add(position);
-
-  await savePositionSnapshot(position, log, ctx);
+  await savePositionSnapshot(position, event.log, ctx);
 };

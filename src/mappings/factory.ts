@@ -23,24 +23,13 @@ import { BigDecimal } from "@subsquid/big-decimal";
 
 export const handlePoolCreated = async (
   event: {
-    token0: string;
-    token1: string;
-    pool: string;
+    type: string;
+    data: { token0: string; token1: string; pool: string };
+    log: Log;
+    decoded: any;
   },
-  log: Log,
   ctx: DataHandlerContext<Store>
 ): Promise<void> => {
-  console.log(
-    event.token0.toLowerCase() === "0xffffffff1fcacbd218edc0eba20fc2308c778080",
-    "token0 is eq to it",
-    event.token0
-  );
-  console.log(
-    event.token1.toLowerCase() === "0xffffffff1fcacbd218edc0eba20fc2308c778080",
-    "token1 is eq to it",
-    event.token1
-  );
-
   // temp fix
   let factory: Factory | undefined = EntityBuffer.get(
     "Factory",
@@ -78,10 +67,10 @@ export const handlePoolCreated = async (
     BigDecimal(factory.poolCount).plus(ONE_BI).toNumber()
   );
 
-  let pool = new Pool({ id: event.pool.toLowerCase() }) as Pool;
+  let pool = new Pool({ id: event.data.pool.toLowerCase() }) as Pool;
 
-  let token0_address = event.token0.toLowerCase();
-  let token1_address = event.token1.toLowerCase();
+  let token0_address = event.data.token0.toLowerCase();
+  let token1_address = event.data.token1.toLowerCase();
 
   let token0: Token | undefined = EntityBuffer.get("Token", token0_address) as
     | Token
@@ -89,7 +78,7 @@ export const handlePoolCreated = async (
   if (!token0) {
     token0 = await ctx.store.get(Token, {
       where: { id: token0_address },
-      relations: { tokenDayData: true, whitelistPools: true },
+      relations: { whitelistPools: true },
     });
   }
 
@@ -99,51 +88,54 @@ export const handlePoolCreated = async (
   if (!token1) {
     token1 = await ctx.store.get(Token, {
       where: { id: token1_address },
-      relations: { tokenDayData: true, whitelistPools: true },
+      relations: { whitelistPools: true },
     });
   }
 
-  if (pools_list.includes(event.pool.toLowerCase())) {
-    console.log("yes we are running");
-    token0 = EntityBuffer.get("Token", event.token1.toLowerCase()) as
+  if (pools_list.includes(event.data.pool.toLowerCase())) {
+    token0 = EntityBuffer.get("Token", event.data.token1.toLowerCase()) as
       | Token
       | undefined;
-    token1 = EntityBuffer.get("Token", event.token0.toLowerCase()) as
+    token1 = EntityBuffer.get("Token", event.data.token0.toLowerCase()) as
       | Token
       | undefined;
 
     if (!token0)
       token0 = await ctx.store.get(Token, {
-        where: { id: event.token1.toLowerCase() },
-        relations: { tokenDayData: true, whitelistPools: true },
+        where: { id: event.data.token1.toLowerCase() },
+        relations: { whitelistPools: true },
       });
     if (!token1)
       token1 = await ctx.store.get(Token, {
-        where: { id: event.token0.toLowerCase() },
-        relations: { tokenDayData: true, whitelistPools: true },
+        where: { id: event.data.token0.toLowerCase() },
+        relations: { whitelistPools: true },
       });
 
-    token0_address = event.token1;
-    token1_address = event.token0;
+    token0_address = event.data.token1;
+    token1_address = event.data.token0;
   }
 
   // fetch info if null
   if (!token0) {
     token0 = new Token({ id: token0_address });
-    token0.symbol = await fetchTokenSymbol(token0_address, ctx);
-    token0.name = await fetchTokenName(token0_address, ctx);
-    token0.totalSupply = BigInt(
-      Number(await fetchTokenTotalSupply(token0_address, ctx))
-    );
-    let decimals = await fetchTokenDecimals(token0_address, ctx);
+    token0.symbol = event.decoded.token0.symbol;
+    token0.name = event.decoded.token0.name;
+    token0.totalSupply = event.decoded.token0.totalSupply;
+
+    // token0.symbol =  await fetchTokenSymbol(token0_address, ctx);
+    // token0.name = await fetchTokenName(token0_address, ctx);
+    // token0.totalSupply = BigInt(
+    //   Number(await fetchTokenTotalSupply(token0_address, ctx))
+    // );
+    // let decimals = await fetchTokenDecimals(token0_address, ctx);
 
     // bail if we couldn't figure out the decimals
-    if (!decimals) {
-      ctx.log.debug("mybug the decimal on token 0 was null");
-      return;
-    }
+    // if (!decimals) {
+    //   ctx.log.debug("mybug the decimal on token 0 was null");
+    //   return;
+    // }
 
-    token0.decimals = BigInt(decimals.toString());
+    token0.decimals = BigInt(event.decoded.token0.decimals.toString());
     token0.derivedMatic = ZERO_BD;
     token0.volume = ZERO_BD;
     token0.volumeUSD = ZERO_BD;
@@ -160,18 +152,23 @@ export const handlePoolCreated = async (
   if (!token1) {
     console.log("theres no token1 so i am running");
     token1 = new Token({ id: token1_address });
-    token1.symbol = await fetchTokenSymbol(token1_address, ctx);
-    token1.name = await fetchTokenName(token1_address, ctx);
-    token1.totalSupply = BigInt(
-      Number(await fetchTokenTotalSupply(token1_address, ctx))
-    );
-    let decimals = await fetchTokenDecimals(token1_address, ctx);
-    // bail if we couldn't figure out the decimals
-    if (!decimals) {
-      ctx.log.debug("mybug the decimal on token 0 was null");
-      return;
-    }
-    token1.decimals = BigInt(decimals.toString());
+    token1.symbol = event.decoded.token1.symbol;
+    token1.name = event.decoded.token1.name;
+    token1.totalSupply = event.decoded.token1.totalSupply;
+
+    // token1.symbol =
+    // token1.symbol = await fetchTokenSymbol(token1_address, ctx);
+    // token1.name = await fetchTokenName(token1_address, ctx);
+    // token1.totalSupply = BigInt(
+    //   Number(await fetchTokenTotalSupply(token1_address, ctx))
+    // );
+    // let decimals = await fetchTokenDecimals(token1_address, ctx);
+    // // bail if we couldn't figure out the decimals
+    // if (!decimals) {
+    //   ctx.log.debug("mybug the decimal on token 0 was null");
+    //   return;
+    // }
+    token1.decimals = BigInt(event.decoded.token1.decimals.toString());
     token1.derivedMatic = ZERO_BD;
     token1.volume = ZERO_BD;
     token1.volumeUSD = ZERO_BD;
@@ -212,8 +209,8 @@ export const handlePoolCreated = async (
   pool.token0 = token0;
   pool.token1 = token1;
   pool.fee = BigInt(100);
-  pool.createdAtTimestamp = BigInt(log.block.timestamp);
-  pool.createdAtBlockNumber = BigInt(log.block.height);
+  pool.createdAtTimestamp = BigInt(event.log.block.timestamp);
+  pool.createdAtBlockNumber = BigInt(event.log.block.height);
   pool.liquidityProviderCount = BigInt(ZERO_BI.toNumber());
   pool.txCount = BigInt(ZERO_BI.toNumber());
   pool.liquidity = BigInt(ZERO_BI.toNumber());
