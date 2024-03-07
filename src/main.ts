@@ -124,6 +124,7 @@ processor.run(new TypeormDatabase({ supportHotBlocks: true }), async (ctx) => {
 
   const results = await executeBatchCalls(ctx, batchRequests);
 
+  if (!results) return;
   results.forEach((result: any, index: number) => {
     const { eventType, callType, tokenIndex, eventDataIndex } =
       requestContexts[index];
@@ -216,7 +217,6 @@ async function collectEventData(ctx: any) {
     for (let log of c.logs) {
       let eventData = null;
 
-      // Example for a specific event type: PoolCreated
       if (
         log.address.toLowerCase() === FACTORY_CONTRACT &&
         log.topics[0] === factory.events["Pool"].topic
@@ -500,8 +500,12 @@ function getFunctionForCallType(callType: string, param?: any[]) {
 }
 
 async function executeBatchCalls(ctx: any, batchRequests: any[]) {
-  const results = await ctx._chain.client.batchCall(batchRequests);
-  return results;
+  try {
+    const results = await ctx._chain.client.batchCall(batchRequests);
+    return results;
+  } catch (err) {
+    console.log("error batching");
+  }
 }
 
 async function processEvents(eventDataList: any[], ctx: any) {
