@@ -293,6 +293,8 @@ export const handleMint = async (
     poolAddress.toLowerCase() + "#" + BigInt(event.data.bottomTick).toString();
   let upperTickId =
     poolAddress.toLowerCase() + "#" + BigInt(event.data.topTick).toString();
+  console.log(lowerTickId, "lowerTickId in handle mint");
+  console.log(upperTickId, "upperTickId in handle mint");
 
   let lowerTick: Tick | undefined = EntityBuffer.get(
     "Tick",
@@ -567,6 +569,8 @@ export const handleBurn = async (
       relations: { pool: true },
     });
   }
+
+  console.log(lowerTick, lowerTickId, "lowerTick");
 
   let upperTick: Tick | undefined = EntityBuffer.get(
     "Tick",

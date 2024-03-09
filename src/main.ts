@@ -124,83 +124,83 @@ processor.run(new TypeormDatabase({ supportHotBlocks: true }), async (ctx) => {
 
   const results = await executeBatchCalls(ctx, batchRequests);
 
-  if (!results) return;
-  results.forEach((result: any, index: number) => {
-    const { eventType, callType, tokenIndex, eventDataIndex } =
-      requestContexts[index];
-    const eventData = eventDataList[eventDataIndex];
+  results &&
+    results.forEach((result: any, index: number) => {
+      const { eventType, callType, tokenIndex, eventDataIndex } =
+        requestContexts[index];
+      const eventData = eventDataList[eventDataIndex];
 
-    // Initialize eventData.decoded if it doesn't exist
-    if (!eventData.decoded) {
-      eventData.decoded = {};
-    }
-    if (eventType === "Pool") {
-      if (!eventData.decoded.token0) {
-        eventData.decoded.token0 = {};
+      // Initialize eventData.decoded if it doesn't exist
+      if (!eventData.decoded) {
+        eventData.decoded = {};
       }
-      if (!eventData.decoded.token1) {
-        eventData.decoded.token1 = {};
-      }
-      const decodedValue = decodeResult(result, callType);
-      const tokenKey = tokenIndex === 0 ? "token0" : "token1";
-      eventData.decoded[tokenKey][callType] = decodedValue;
-    } else if (eventType === "Swap") {
-      if (!eventData.decoded.totalFeeGrowth0Token) {
-        eventData.decoded.totalFeeGrowth0Token = "";
-      }
-      if (!eventData.decoded.totalFeeGrowth1Token) {
-        eventData.decoded.totalFeeGrowth0Token = "";
-      }
-
-      const tokenKey =
-        tokenIndex === 0 ? "totalFeeGrowth0Token" : "totalFeeGrowth1Token";
-      let decodedValue = decodeResult(result, callType);
-
-      // Define an asynchronous function to fetch data from the contract if necessary
-      const fetchFromContractIfNeeded = async () => {
-        if (!decodedValue || decodedValue === "") {
-          let lastBatchBlockHeader = { height: eventData.log.block.height };
-          const ctxContract: BlockContext = {
-            _chain: ctx._chain,
-            block: lastBatchBlockHeader,
-          };
-
-          let poolContract = new PoolContract(
-            ctxContract,
-            eventData.log.address
-          );
-
-          // Fetch from contract based on the token index
-          if (tokenIndex === 0) {
-            return await poolContract.totalFeeGrowth0Token();
-          } else {
-            return await poolContract.totalFeeGrowth1Token();
-          }
+      if (eventType === "Pool") {
+        if (!eventData.decoded.token0) {
+          eventData.decoded.token0 = {};
         }
-        return decodedValue;
-      };
+        if (!eventData.decoded.token1) {
+          eventData.decoded.token1 = {};
+        }
+        const decodedValue = decodeResult(result, callType);
+        const tokenKey = tokenIndex === 0 ? "token0" : "token1";
+        eventData.decoded[tokenKey][callType] = decodedValue;
+      } else if (eventType === "Swap") {
+        if (!eventData.decoded.totalFeeGrowth0Token) {
+          eventData.decoded.totalFeeGrowth0Token = "";
+        }
+        if (!eventData.decoded.totalFeeGrowth1Token) {
+          eventData.decoded.totalFeeGrowth0Token = "";
+        }
 
-      // Use the async function to set the decoded value
-      fetchFromContractIfNeeded()
-        .then((fetchedValue) => {
-          eventData.decoded[tokenKey] = fetchedValue || decodedValue;
-        })
-        .catch((error) => {
-          console.error("Error fetching data from contract: ", error);
-          // Handle error or assign a default value if necessary
-        });
-    } else if (
-      eventType === "Transfer" ||
-      eventType === "ManagerCollect" ||
-      eventType === "DecreaseLiquidity" ||
-      eventType === "IncreaseLiquidity"
-    ) {
-      if (!eventData.decoded.positions) {
-        eventData.decoded.positions = "";
+        const tokenKey =
+          tokenIndex === 0 ? "totalFeeGrowth0Token" : "totalFeeGrowth1Token";
+        let decodedValue = decodeResult(result, callType);
+
+        // Define an asynchronous function to fetch data from the contract if necessary
+        const fetchFromContractIfNeeded = async () => {
+          if (!decodedValue || decodedValue === "") {
+            let lastBatchBlockHeader = { height: eventData.log.block.height };
+            const ctxContract: BlockContext = {
+              _chain: ctx._chain,
+              block: lastBatchBlockHeader,
+            };
+
+            let poolContract = new PoolContract(
+              ctxContract,
+              eventData.log.address
+            );
+
+            // Fetch from contract based on the token index
+            if (tokenIndex === 0) {
+              return await poolContract.totalFeeGrowth0Token();
+            } else {
+              return await poolContract.totalFeeGrowth1Token();
+            }
+          }
+          return decodedValue;
+        };
+
+        // Use the async function to set the decoded value
+        fetchFromContractIfNeeded()
+          .then((fetchedValue) => {
+            eventData.decoded[tokenKey] = fetchedValue || decodedValue;
+          })
+          .catch((error) => {
+            console.error("Error fetching data from contract: ", error);
+            // Handle error or assign a default value if necessary
+          });
+      } else if (
+        eventType === "Transfer" ||
+        eventType === "ManagerCollect" ||
+        eventType === "DecreaseLiquidity" ||
+        eventType === "IncreaseLiquidity"
+      ) {
+        if (!eventData.decoded.positions) {
+          eventData.decoded.positions = "";
+        }
+        eventData.decoded.positions = decodeResult(result, callType);
       }
-      eventData.decoded.positions = decodeResult(result, callType);
-    }
-  });
+    });
 
   await processEvents(eventDataList, ctx);
 

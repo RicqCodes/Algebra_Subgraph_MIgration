@@ -61,5 +61,6 @@ export const createTick = async (
   tick.feeGrowthOutside0X128 = BigInt(ZERO_BI.toNumber());
   tick.feeGrowthOutside1X128 = BigInt(ZERO_BI.toNumber());
 
+  EntityBuffer.add(tick);
   return tick;
 };
