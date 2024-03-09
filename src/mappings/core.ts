@@ -568,8 +568,6 @@ export const handleBurn = async (
     });
   }
 
-  console.log(lowerTick, lowerTickId, "lowerTick");
-
   let upperTick: Tick | undefined = EntityBuffer.get(
     "Tick",
     upperTickId.toLowerCase()
