@@ -1271,7 +1271,6 @@ const updateTickFeeVarsAndSave = async (
   tickResult?: any
 ): Promise<void> => {
   let poolAddress = log.address;
-
   if (!tickResult) {
     let lastBatchBlockHeader = { height: log.block.height };
     const ctxContract: BlockContext = {

@@ -33,85 +33,14 @@ import {
   functions as NFPMFunctions,
 } from "./abi/NonfungiblePositionManager";
 import { BlockContext, Func } from "./abi/abi.support";
-// for (let c of ctx.blocks) {
-//   for (let log of c.logs) {
-//     if (log.address.toLowerCase() === FACTORY_CONTRACT) {
-//       if (log.topics[0] === factory.events["Pool"].topic) {
-//         const eventData = factory.events["Pool"].decode(log);
-//         console.log("factory pool is running right now", eventData.pool);
-//         await handlePoolCreated(eventData, log, ctx);
-//         // console.log("factory pool finished running");
-//       }
-//     } else if (log.address.toLowerCase() === NFPMANAGER_CONTRACT) {
-//       if (log.topics[0] === nfpManager.events["Collect"].topic) {
-//         // console.log("collect is running");
-//         const eventDataCollect = nfpManager.events["Collect"].decode(log);
-//         await handleCollectManager(eventDataCollect, log, ctx);
-//       } else if (
-//         log.topics[0] === nfpManager.events["DecreaseLiquidity"].topic
-//       ) {
-//         // console.log("decrease liquidity is running");
-//         const eventDataDecrease =
-//           nfpManager.events["DecreaseLiquidity"].decode(log);
-//         await handleDecreaseLiquidity(eventDataDecrease, log, ctx);
-//       } else if (
-//         log.topics[0] === nfpManager.events["IncreaseLiquidity"].topic
-//       ) {
-//         // console.log("increase liquidity is running");
-//         const eventDataIncrease =
-//           nfpManager.events["IncreaseLiquidity"].decode(log);
-//         await handleIncreaseLiquidity(eventDataIncrease, log, ctx);
-//       } else if (log.topics[0] === nfpManager.events["Transfer"].topic) {
-//         // console.log("transfer is running");
-//         const eventDataTransfer = nfpManager.events["Transfer"].decode(log);
-//         await handleTransfer(eventDataTransfer, log, ctx);
-//       }
-//     } else {
-//       if (log.topics[0] === pool.events["Initialize"].topic) {
-//         // console.log("initialize running");
-//         const eventData = pool.events["Initialize"].decode(log);
-//         await handleInitialize(eventData, log, ctx);
-//       } else if (log.topics[0] === pool.events["Swap"].topic) {
-//         // console.log("swap running");
-//         const eventData = pool.events["Swap"].decode(log);
-//         await handleSwap(eventData, log, ctx);
-//       } else if (log.topics[0] === pool.events["Mint"].topic) {
-//         // console.log("mint running");
-//         const eventData = pool.events["Mint"].decode(log);
-//         await handleMint(eventData, log, ctx);
-//       } else if (log.topics[0] === pool.events["Burn"].topic) {
-//         // console.log("burn running");
-//         const eventData = pool.events["Burn"].decode(log);
-//         await handleBurn(eventData, log, ctx);
-//       } else if (log.topics[0] === pool.events["Fee"].topic) {
-//         // console.log("handle change fee running");
-//         const eventData = pool.events["Fee"].decode(log);
-//         await handleChangeFee(eventData, log, ctx);
-//       } else if (log.topics[0] === pool.events["Collect"].topic) {
-//         // console.log("handle collect running");
-//         const eventData = pool.events["Collect"].decode(log);
-//         await handleCollect(eventData, log, ctx);
-//       } else if (log.topics[0] === pool.events["CommunityFee"].topic) {
-//         // console.log("set commuinity fee running");
-//         const eventData = pool.events["CommunityFee"].decode(log);
-//         await handleSetCommunityFee(eventData, log, ctx);
-//       }
-//     }
-//   }
-// }
-// for (let entities of EntityBuffer.flush()) {
-//   await ctx.store.upsert(entities);
-//   // await ctx.store.upsert(EntityBuffer.flush());
-// }
-// ctx._chain.client.batchCall([
-//   {
-//     method: "symbol",
-//     params: [],
-//   },
-// ]);
+import { addErrorContext } from "@subsquid/util-internal";
+import { RpcError } from "./utils/error";
 
 const poolMap = new Set();
 processor.run(new TypeormDatabase({ supportHotBlocks: true }), async (ctx) => {
+  // @ts-ignore
+  ctx._chain.client.receiveResult = receiveResult;
+
   const pools = await ctx.store.find(Pool);
   pools.forEach((pool) => {
     poolMap.add(pool.id);
@@ -123,12 +52,21 @@ processor.run(new TypeormDatabase({ supportHotBlocks: true }), async (ctx) => {
   );
 
   const results = await executeBatchCalls(ctx, batchRequests);
-
+  // throw new Error("Stop here ");
   results &&
-    results.forEach((result: any, index: number) => {
+    results.forEach((resultWrapper: any, index: number) => {
       const { eventType, callType, tokenIndex, eventDataIndex } =
         requestContexts[index];
       const eventData = eventDataList[eventDataIndex];
+
+      // Skip processing this result if it indicates an error
+      if (resultWrapper.error) {
+        // console.error("Error encountered for request:", resultWrapper.data);
+        return; // Move to the next result
+      }
+
+      // Extract the actual result data since there's no error
+      const result = resultWrapper.data;
 
       // Initialize eventData.decoded if it doesn't exist
       if (!eventData.decoded) {
@@ -142,6 +80,8 @@ processor.run(new TypeormDatabase({ supportHotBlocks: true }), async (ctx) => {
           eventData.decoded.token1 = {};
         }
         const decodedValue = decodeResult(result, callType);
+
+        // throw new Error("stop here");
         const tokenKey = tokenIndex === 0 ? "token0" : "token1";
         eventData.decoded[tokenKey][callType] = decodedValue;
       } else if (eventType === "Swap") {
@@ -155,7 +95,6 @@ processor.run(new TypeormDatabase({ supportHotBlocks: true }), async (ctx) => {
         const tokenKey =
           tokenIndex === 0 ? "totalFeeGrowth0Token" : "totalFeeGrowth1Token";
         let decodedValue = decodeResult(result, callType);
-
         // Define an asynchronous function to fetch data from the contract if necessary
         const fetchFromContractIfNeeded = async () => {
           if (!decodedValue || decodedValue === "") {
@@ -186,7 +125,7 @@ processor.run(new TypeormDatabase({ supportHotBlocks: true }), async (ctx) => {
             eventData.decoded[tokenKey] = fetchedValue || decodedValue;
           })
           .catch((error) => {
-            console.error("Error fetching data from contract: ", error);
+            // console.error("Error fetching data from contract: ", error);
             // Handle error or assign a default value if necessary
           });
       } else if (
@@ -510,7 +449,7 @@ async function executeBatchCalls(ctx: any, batchRequests: any[]) {
 
 async function processEvents(eventDataList: any[], ctx: any) {
   for (const eventData of eventDataList) {
-    // console.log(eventData.type, "event type");
+    console.log(eventData.type, "event type");
     if (eventData.type === "Pool") {
       await handlePoolCreated(eventData, ctx);
     } else if (eventData.type === "ManagerCollect") {
@@ -536,5 +475,51 @@ async function processEvents(eventDataList: any[], ctx: any) {
     } else if (eventData.type === "CommunityFee") {
       await handleSetCommunityFee(eventData, ctx);
     }
+  }
+}
+
+function receiveResult(
+  call: any,
+  res: any,
+  validateResult?: any,
+  validateError?: any
+): any {
+  // Implement custom error handling logic here
+  //@ts-ignore
+  if (this.log?.isDebug()) {
+    //@ts-ignore
+    this.log.debug(
+      {
+        rpcId: call.id,
+        rpcMethod: call.method,
+        rpcParams: call.params,
+        rpcResponse: res,
+      },
+      "rpc response"
+    );
+  }
+  try {
+    if (res.error) {
+      const errorResponse = validateError
+        ? validateError(res.error, call)
+        : new RpcError(res.error);
+      // Instead of throwing, wrap the error in a structure to identify it as an error response
+      return { error: true, data: errorResponse };
+    } else if (validateResult) {
+      return { error: false, data: validateResult(res.result, call) };
+    } else {
+      return { error: false, data: res.result };
+    }
+  } catch (err: any) {
+    // Wrap the thrown error similarly
+    const wrappedError = addErrorContext(err, {
+      // @ts-ignore
+      rpcUrl: this.url,
+      rpcId: call.id,
+      rpcMethod: call.method,
+      rpcParams: call.params,
+      rpcResponse: res,
+    });
+    return { error: true, data: wrappedError };
   }
 }
