@@ -287,7 +287,7 @@ export const handleIncreaseLiquidity = async (
     };
     log: Log;
     decoded: {
-      positions: any;
+      positions?: any;
     };
   },
   ctx: DataHandlerContext<Store>
@@ -433,7 +433,7 @@ export const handleCollectManager = async (
     };
     log: Log;
     decoded: {
-      positions: any;
+      positions?: any;
     };
   },
   ctx: DataHandlerContext<Store>
@@ -519,7 +519,7 @@ export const handleTransfer = async (
     event.log,
     ctx,
     event.data.tokenId,
-    event.decoded.positions
+    event.decoded?.positions
   );
   // position was not able to be fetched
   if (!position) {
