@@ -225,9 +225,10 @@ const updateFeeVars = async (
         BigInt(tokenId.toString())
       );
     } catch (err) {
-      console.log(err, "err from position manager");
+      // console.log(err, "err from position manager");
     }
   }
+  console.log(positionResult, "position result");
   if (positionResult) {
     position.feeGrowthInside0LastX128 = positionResult[7];
     position.feeGrowthInside1LastX128 = positionResult[8];
