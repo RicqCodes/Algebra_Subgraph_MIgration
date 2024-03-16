@@ -499,13 +499,12 @@ function receiveResult(
   }
   try {
     if (res.error) {
-      const errorResponse = validateError
-        ? validateError(res.error, call)
-        : new RpcError(res.error);
-
-      console.log("maybe this one ran");
+      if (validateError) {
+        return validateError(res.error, call);
+      } else {
+        return { error: true, data: new RpcError(res.error) };
+      }
       // Instead of throwing, wrap the error in a structure to identify it as an error response
-      return { error: true, data: errorResponse };
     } else if (validateResult) {
       return { error: false, data: validateResult(res.result, call) };
     } else {
