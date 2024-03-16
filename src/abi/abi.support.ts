@@ -142,6 +142,8 @@ export class ContractBase {
       { to: this.address, data },
       "0x" + this.blockHeight.toString(16),
     ]);
+
+    console.log(result.data, "data returned from function");
     return func.decodeResult(result.data);
   }
 }
