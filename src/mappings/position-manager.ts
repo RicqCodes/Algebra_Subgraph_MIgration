@@ -220,9 +220,13 @@ const updateFeeVars = async (
       log.address
     );
     console.log("tokenId", tokenId);
-    positionResult = await positionManagerContract.positions(
-      BigInt(tokenId.toString())
-    );
+    try {
+      positionResult = await positionManagerContract.positions(
+        BigInt(tokenId.toString())
+      );
+    } catch (err) {
+      console.log(err, "err from position manager");
+    }
   }
   if (positionResult) {
     position.feeGrowthInside0LastX128 = positionResult[7];
