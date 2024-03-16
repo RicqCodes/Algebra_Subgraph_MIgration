@@ -43,18 +43,20 @@ const getPosition = async (
   }
 
   if (!position) {
-    // let lastBatchBlockHeader = { height: log.block.height };
-    // const ctxContract: BlockContext = {
-    //   _chain: ctx._chain,
-    //   block: lastBatchBlockHeader,
-    // };
+    if (!positionResult) {
+      let lastBatchBlockHeader = { height: log.block.height };
+      const ctxContract: BlockContext = {
+        _chain: ctx._chain,
+        block: lastBatchBlockHeader,
+      };
 
-    // let contract = new NonfungiblePositionManager(
-    //   ctxContract,
-    //   lastBatchBlockHeader,
-    //   log.address
-    // );
-    // let positionResult = await contract.positions(BigInt(tokenId.toString()));
+      let contract = new NonfungiblePositionManager(
+        ctxContract,
+        lastBatchBlockHeader,
+        log.address
+      );
+      positionResult = await contract.positions(BigInt(tokenId.toString()));
+    }
 
     // the following call reverts in situations where the position is minted
     // and deleted in the same block
@@ -64,8 +66,6 @@ const getPosition = async (
         _chain: ctx._chain,
         block: lastBatchBlockHeader,
       };
-
-      // positionResult[2];
 
       let factoryContract = new FactoryContract(
         ctxContract,

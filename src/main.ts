@@ -61,7 +61,6 @@ processor.run(new TypeormDatabase({ supportHotBlocks: true }), async (ctx) => {
 
       // Skip processing this result if it indicates an error
       if (resultWrapper.error) {
-        // console.error("Error encountered for request:", resultWrapper.data);
         return; // Move to the next result
       }
 
