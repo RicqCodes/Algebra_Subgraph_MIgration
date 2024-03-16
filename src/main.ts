@@ -502,6 +502,8 @@ function receiveResult(
       const errorResponse = validateError
         ? validateError(res.error, call)
         : new RpcError(res.error);
+
+      console.log("maybe this one ran");
       // Instead of throwing, wrap the error in a structure to identify it as an error response
       return { error: true, data: errorResponse };
     } else if (validateResult) {
@@ -510,6 +512,7 @@ function receiveResult(
       return { error: false, data: res.result };
     }
   } catch (err: any) {
+    console.log("this error is what ran");
     // Wrap the thrown error similarly
     const wrappedError = addErrorContext(err, {
       // @ts-ignore
