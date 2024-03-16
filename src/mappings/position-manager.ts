@@ -219,6 +219,7 @@ const updateFeeVars = async (
       lastBatchBlockHeader,
       log.address
     );
+    console.log("tokenId", tokenId);
     positionResult = await positionManagerContract.positions(
       BigInt(tokenId.toString())
     );
