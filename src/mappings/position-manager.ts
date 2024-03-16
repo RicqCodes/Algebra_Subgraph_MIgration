@@ -201,23 +201,28 @@ const getPosition = async (
 
 // calling blockchain for update
 const updateFeeVars = async (
+  tokenId: bigint,
   position: Position,
-  positionResult: any
+  positionResult: any,
+  log: Log,
+  ctx: DataHandlerContext<Store>
 ): Promise<Position> => {
-  // let lastBatchBlockHeader = ctx.blocks[ctx.blocks.length - 1].header;
-  // const ctxContract: BlockContext = {
-  //   _chain: ctx._chain,
-  //   block: lastBatchBlockHeader,
-  // };
+  if (!positionResult) {
+    let lastBatchBlockHeader = ctx.blocks[ctx.blocks.length - 1].header;
+    const ctxContract: BlockContext = {
+      _chain: ctx._chain,
+      block: lastBatchBlockHeader,
+    };
 
-  // let positionManagerContract = new NonfungiblePositionManager(
-  //   ctxContract,
-  //   lastBatchBlockHeader,
-  //   log.address
-  // );
-  // let positionResult = await positionManagerContract.positions(
-  //   BigInt(tokenId.toString())
-  // );
+    let positionManagerContract = new NonfungiblePositionManager(
+      ctxContract,
+      lastBatchBlockHeader,
+      log.address
+    );
+    positionResult = await positionManagerContract.positions(
+      BigInt(tokenId.toString())
+    );
+  }
   if (positionResult) {
     position.feeGrowthInside0LastX128 = positionResult[7];
     position.feeGrowthInside1LastX128 = positionResult[8];
@@ -413,7 +418,13 @@ export const handleDecreaseLiquidity = async (
   position.withdrawnToken0 = position.withdrawnToken0.plus(amount0);
   position.withdrawnToken1 = position.withdrawnToken1.plus(amount1);
 
-  position = await updateFeeVars(position, event.decoded.positions);
+  position = await updateFeeVars(
+    event.data.tokenId,
+    position,
+    event.decoded?.positions,
+    event.log,
+    ctx
+  );
 
   // recalculatePosition(position)
 
@@ -491,9 +502,13 @@ export const handleCollectManager = async (
     position.withdrawnToken1
   );
 
-  position = await updateFeeVars(position, event.decoded.positions);
-
-  // recalculatePosition(position)
+  position = await updateFeeVars(
+    event.data.tokenId,
+    position,
+    event.decoded.positions,
+    event.log,
+    ctx
+  );
 
   EntityBuffer.add(position);
 
