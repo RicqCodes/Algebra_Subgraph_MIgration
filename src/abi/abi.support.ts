@@ -142,7 +142,9 @@ export class ContractBase {
       { to: this.address, data },
       "0x" + this.blockHeight.toString(16),
     ]);
-
+    if (result.error) {
+      throw new Error(result.data);
+    }
     return func.decodeResult(result.data);
   }
 }
