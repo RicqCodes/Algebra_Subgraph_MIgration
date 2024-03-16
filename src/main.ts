@@ -511,7 +511,6 @@ function receiveResult(
       return { error: false, data: res.result };
     }
   } catch (err: any) {
-    console.log("this error is what ran");
     // Wrap the thrown error similarly
     const wrappedError = addErrorContext(err, {
       // @ts-ignore
