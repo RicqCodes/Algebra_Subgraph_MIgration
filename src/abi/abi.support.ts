@@ -138,6 +138,7 @@ export class ContractBase {
     args: Args
   ): Promise<Result> {
     let data = func.encode(args);
+    console.log(data, "encoded data");
     let result = await this._chain.client.call("eth_call", [
       { to: this.address, data },
       "0x" + this.blockHeight.toString(16),
