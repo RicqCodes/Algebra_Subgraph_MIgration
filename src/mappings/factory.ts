@@ -150,7 +150,6 @@ export const handlePoolCreated = async (
   }
 
   if (!token1) {
-    console.log("theres no token1 so i am running");
     token1 = new Token({ id: token1_address });
     token1.symbol = event.decoded.token1.symbol;
     token1.name = event.decoded.token1.name;

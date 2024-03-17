@@ -10,7 +10,11 @@ import { UpdatedLog } from "./interfaces";
 
 export function exponentToBigDecimal(decimals: BigInt): BigDecimal {
   let bd = BigDecimal("1");
-  for (let i = ZERO_BI; i > BigInt(+decimals); i = i + ONE_BI) {
+  for (
+    let i = ZERO_BI;
+    BigInt(i) > BigInt(decimals.toString());
+    i = i + ONE_BI
+  ) {
     bd = bd.times(BigDecimal("10"));
   }
   return bd;

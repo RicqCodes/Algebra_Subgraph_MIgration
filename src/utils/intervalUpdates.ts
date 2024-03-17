@@ -73,14 +73,11 @@ export const updatePoolDayData = async (
   ctx: DataHandlerContext<Store>
 ): Promise<PoolDayData> => {
   let dayID = BigInt(log.block.timestamp) / 1000n / 86400n;
-  console.log(dayID, "day id from update pool day data");
   let dayStartTimestamp = (BigInt(log.block.timestamp) / 86400n) * 86400n;
   let dayPoolID = log.address
     .toLowerCase()
     .concat("-")
     .concat(dayID.toString());
-
-  console.log(dayPoolID, "day pool id");
 
   let pool: Pool | undefined = EntityBuffer.get(
     "Pool",
