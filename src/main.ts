@@ -79,7 +79,6 @@ processor.run(new TypeormDatabase({ supportHotBlocks: true }), async (ctx) => {
           eventData.decoded.token1 = {};
         }
         const decodedValue = decodeResult(result, callType);
-
         // throw new Error("stop here");
         const tokenKey = tokenIndex === 0 ? "token0" : "token1";
         eventData.decoded[tokenKey][callType] = decodedValue;

@@ -12,7 +12,7 @@ export const NFPMANAGER_CONTRACT =
 
 export const processor = new EvmBatchProcessor()
   .setGateway(lookupArchive("moonbeam", { type: "EVM" }))
-  .setRpcEndpoint("https://moonbeam-rpc.publicnode.com")
+  .setRpcEndpoint("https://rpc.ankr.com/moonbeam")
   .setFinalityConfirmation(75)
   .setBlockRange({ from: 2_649_799 })
   .setFields({
