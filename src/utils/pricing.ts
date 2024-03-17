@@ -34,7 +34,7 @@ export function priceToTokenPrices(
   token0: Token,
   token1: Token
 ): BigDecimal[] {
-  let num = BigDecimal(price.toString()).times(price.toString());
+  let num = BigDecimal(BigInt(+price) * BigInt(+price));
   let denom = BigDecimal(Q192.toString());
   let price1 = num
     .div(denom)

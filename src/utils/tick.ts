@@ -37,9 +37,9 @@ export const createTick = async (
 
   tick.createdAtTimestamp = BigInt(log.block.timestamp);
   tick.createdAtBlockNumber = BigInt(log.block.height);
-  tick.liquidityGross = BigInt(ZERO_BI.toNumber());
-  tick.liquidityNet = BigInt(ZERO_BI.toNumber());
-  tick.liquidityProviderCount = BigInt(ZERO_BI.toNumber());
+  tick.liquidityGross = ZERO_BI;
+  tick.liquidityNet = ZERO_BI;
+  tick.liquidityProviderCount = ZERO_BI;
 
   tick.price0 = ONE_BD;
   tick.price1 = ONE_BD;
@@ -57,9 +57,9 @@ export const createTick = async (
   tick.collectedFeesToken0 = ZERO_BD;
   tick.collectedFeesToken1 = ZERO_BD;
   tick.collectedFeesUSD = ZERO_BD;
-  tick.liquidityProviderCount = BigInt(ZERO_BI.toNumber());
-  tick.feeGrowthOutside0X128 = BigInt(ZERO_BI.toNumber());
-  tick.feeGrowthOutside1X128 = BigInt(ZERO_BI.toNumber());
+  tick.liquidityProviderCount = ZERO_BI;
+  tick.feeGrowthOutside0X128 = ZERO_BI;
+  tick.feeGrowthOutside1X128 = ZERO_BI;
 
   EntityBuffer.add(tick);
   return tick;
