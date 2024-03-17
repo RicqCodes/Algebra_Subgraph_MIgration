@@ -43,7 +43,7 @@ export const handlePoolCreated = async (
   // load factory
   if (!factory) {
     factory = new Factory({ id: FACTORY_ADDRESS.toLowerCase() });
-    factory.poolCount = BigInt(ZERO_BI.toNumber());
+    factory.poolCount = ZERO_BI;
     factory.totalVolumeUSD = ZERO_BD;
     factory.totalVolumeMatic = ZERO_BD;
     factory.totalFeesUSD = ZERO_BD;
@@ -53,7 +53,7 @@ export const handlePoolCreated = async (
     factory.totalValueLockedMatic = ZERO_BD;
     factory.totalValueLockedUSDUntracked = ZERO_BD;
     factory.totalValueLockedMaticUntracked = ZERO_BD;
-    factory.txCount = BigInt(ZERO_BI.toNumber());
+    factory.txCount = ZERO_BI;
     factory.owner = ADDRESS_ZERO;
 
     // create new bundle for tracking matic price
@@ -144,8 +144,8 @@ export const handlePoolCreated = async (
     token0.totalValueLocked = ZERO_BD;
     token0.totalValueLockedUSD = ZERO_BD;
     token0.totalValueLockedUSDUntracked = ZERO_BD;
-    token0.txCount = BigInt(ZERO_BI.toNumber());
-    token0.poolCount = BigInt(ZERO_BI.toNumber());
+    token0.txCount = ZERO_BI;
+    token0.poolCount = ZERO_BI;
     token0.whitelistPools = [];
   }
 
@@ -177,8 +177,8 @@ export const handlePoolCreated = async (
     token1.totalValueLocked = ZERO_BD;
     token1.totalValueLockedUSD = ZERO_BD;
     token1.totalValueLockedUSDUntracked = ZERO_BD;
-    token1.txCount = BigInt(ZERO_BI.toNumber());
-    token1.poolCount = BigInt(ZERO_BI.toNumber());
+    token1.txCount = ZERO_BI;
+    token1.poolCount = ZERO_BI;
     token1.whitelistPools = [];
   }
 
@@ -211,17 +211,17 @@ export const handlePoolCreated = async (
   pool.fee = BigInt(100);
   pool.createdAtTimestamp = BigInt(event.log.block.timestamp);
   pool.createdAtBlockNumber = BigInt(event.log.block.height);
-  pool.liquidityProviderCount = BigInt(ZERO_BI.toNumber());
-  pool.txCount = BigInt(ZERO_BI.toNumber());
-  pool.liquidity = BigInt(ZERO_BI.toNumber());
-  pool.sqrtPrice = BigInt(ZERO_BI.toNumber());
-  pool.feeGrowthGlobal0X128 = BigInt(ZERO_BI.toNumber());
-  pool.feeGrowthGlobal1X128 = BigInt(ZERO_BI.toNumber());
-  pool.communityFee0 = BigInt(ZERO_BI.toNumber());
-  pool.communityFee1 = BigInt(ZERO_BI.toNumber());
+  pool.liquidityProviderCount = ZERO_BI;
+  pool.txCount = ZERO_BI;
+  pool.liquidity = ZERO_BI;
+  pool.sqrtPrice = ZERO_BI;
+  pool.feeGrowthGlobal0X128 = ZERO_BI;
+  pool.feeGrowthGlobal1X128 = ZERO_BI;
+  pool.communityFee0 = ZERO_BI;
+  pool.communityFee1 = ZERO_BI;
   pool.token0Price = ZERO_BD;
   pool.token1Price = ZERO_BD;
-  pool.observationIndex = BigInt(ZERO_BI.toNumber());
+  pool.observationIndex = ZERO_BI;
   pool.totalValueLockedToken0 = ZERO_BD;
   pool.totalValueLockedToken1 = ZERO_BD;
   pool.totalValueLockedUSD = ZERO_BD;

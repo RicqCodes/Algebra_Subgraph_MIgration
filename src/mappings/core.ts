@@ -274,7 +274,8 @@ export const handleMint = async (
   mint.transaction = transaction;
   mint.timestamp = transaction.timestamp;
   mint.pool = pool!;
-  mint.token0 = pool!.token1;
+  mint.token0 = pool!.token0;
+  mint.token1 = pool!.token1;
   mint.owner = decodeHex(event.data.owner);
   mint.sender = decodeHex(event.data.sender);
   mint.origin = decodeHex(event.log.transaction!.from);
@@ -885,6 +886,7 @@ export const handleSwap = async (
 
   // create Swap event
   let transaction = await loadTransaction(event.log as UpdatedLog, ctx);
+
   let swap = new Swap({
     id: transaction.id.toLowerCase() + "#" + pool!.txCount.toString(),
   });

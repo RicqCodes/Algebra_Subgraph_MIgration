@@ -181,7 +181,7 @@ const getPosition = async (
 
       position.tickLower = tickLower;
       position.tickUpper = tickUpper;
-      position.liquidity = BigInt(ZERO_BI.toNumber());
+      position.liquidity = BigInt(ZERO_BI);
       position.depositedToken0 = ZERO_BD;
       position.depositedToken1 = ZERO_BD;
       position.withdrawnToken0 = ZERO_BD;

@@ -448,7 +448,7 @@ async function executeBatchCalls(ctx: any, batchRequests: any[]) {
 
 async function processEvents(eventDataList: any[], ctx: any) {
   for (const eventData of eventDataList) {
-    console.log(eventData.type, "event type");
+    // console.log(eventData.type, "event type");
     if (eventData.type === "Pool") {
       await handlePoolCreated(eventData, ctx);
     } else if (eventData.type === "ManagerCollect") {
