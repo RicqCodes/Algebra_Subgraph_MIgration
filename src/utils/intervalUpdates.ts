@@ -37,8 +37,8 @@ export const updateAlgebraDayData = async (
     algebra = await ctx.store.get(Factory, FACTORY_ADDRESS.toLowerCase());
   }
 
-  let timestamp = log.block.timestamp;
-  let dayID = Math.round(timestamp / 86400); // rounded
+  let timestamp = Number(log.block.timestamp);
+  let dayID = timestamp / 86400; // rounded
   let dayStartTimestamp = dayID * 86400;
 
   let algebraDayData: AlgebraDayData | undefined = EntityBuffer.get(
@@ -73,8 +73,10 @@ export const updatePoolDayData = async (
   log: Log,
   ctx: DataHandlerContext<Store>
 ): Promise<PoolDayData> => {
-  let timestamp = log.block.timestamp;
-  let dayID = Math.round(timestamp / 86400);
+  let timestamp = Number(log.block.timestamp);
+  console.log(timestamp, "timestamp from updatePoolDayData");
+  let dayID = timestamp / 86400;
+  console.log(dayID, "day id from update pool day data");
   let dayStartTimestamp = dayID * 86400;
   let dayPoolID = log.address
     .toLowerCase()
@@ -149,8 +151,8 @@ export const updateFeeHourData = async (
   ctx: DataHandlerContext<Store>,
   Fee: BigInt
 ): Promise<void> => {
-  let timestamp = log.block.timestamp;
-  let hourIndex = Math.round(timestamp / 3600);
+  let timestamp = Number(log.block.timestamp);
+  let hourIndex = timestamp / 3600;
   let hourStartUnix = hourIndex * 3600;
   let hourFeeID = log.address
     .toLowerCase()
@@ -199,8 +201,8 @@ export const updatePoolHourData = async (
   log: Log,
   ctx: DataHandlerContext<Store>
 ): Promise<PoolHourData> => {
-  let timestamp = log.block.timestamp;
-  let hourIndex = Math.round(timestamp / 3600); // get unique hour within unix history
+  let timestamp = Number(log.block.timestamp);
+  let hourIndex = timestamp / 3600; // get unique hour within unix history
   let hourStartUnix = hourIndex * 3600; // want the rounded effect
   let hourPoolID = log.address
     .toLowerCase()
@@ -281,8 +283,8 @@ export const updateTokenDayData = async (
     bundle = await ctx.store.get(Bundle, "1");
   }
 
-  let timestamp = log.block.timestamp;
-  let dayID = Math.round(timestamp / 86400);
+  let timestamp = Number(log.block.timestamp);
+  let dayID = timestamp / 86400;
   let dayStartTimestamp = dayID * 86400;
   let tokenDayID = token.id
     .toString()
@@ -346,8 +348,8 @@ export const updateTokenHourData = async (
     bundle = await ctx.store.get(Bundle, "1");
   }
 
-  let timestamp = log.block.timestamp;
-  let hourIndex = Math.round(timestamp / 3600); // get unique hour within unix history
+  let timestamp = Number(log.block.timestamp);
+  let hourIndex = timestamp / 3600; // get unique hour within unix history
   let hourStartUnix = hourIndex * 3600; // want the rounded effect
   let tokenHourID = token.id
     .toString()
@@ -404,8 +406,8 @@ export const updateTickDayData = async (
   log: Log,
   ctx: DataHandlerContext<Store>
 ): Promise<TickDayData> => {
-  let timestamp = log.block.timestamp;
-  let dayID = Math.round(timestamp / 86400);
+  let timestamp = Number(log.block.timestamp);
+  let dayID = timestamp / 86400;
   let dayStartTimestamp = dayID * 86400;
   let tickDayDataID = tick.id
     .toLowerCase()

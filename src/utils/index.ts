@@ -108,7 +108,7 @@ export const loadTransaction = async (
 ): Promise<Transaction> => {
   let transaction: Transaction | undefined = EntityBuffer.get(
     "Transaction",
-    log.transaction?.hash.toLowerCase()!
+    log.transaction!.hash.toLowerCase()!
   ) as Transaction | undefined;
 
   if (!transaction) {
@@ -119,7 +119,7 @@ export const loadTransaction = async (
   }
 
   if (!transaction) {
-    transaction = new Transaction({ id: log.transaction?.hash.toLowerCase()! });
+    transaction = new Transaction({ id: log.transaction!.hash.toLowerCase()! });
   }
 
   transaction.blockNumber = BigInt(log.block.height);
