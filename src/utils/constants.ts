@@ -9,8 +9,8 @@ const MULTICALL_CONTRACT = "0x5ba1e12693dc8f9c48aad8770482f4739beed696";
 
 // export const multicall = new Multicall(ctx, lastBlock, MULTICALL_CONTRACT);
 
-export let ZERO_BI = BigDecimal(0);
-export let ONE_BI = BigDecimal(1);
+export let ZERO_BI = BigInt(0);
+export let ONE_BI = BigInt(1);
 export let ZERO_BD = BigDecimal("0");
 export let ONE_BD = BigDecimal("1");
 export let BI_18 = BigInt(18);

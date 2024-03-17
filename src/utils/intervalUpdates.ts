@@ -37,9 +37,8 @@ export const updateAlgebraDayData = async (
     algebra = await ctx.store.get(Factory, FACTORY_ADDRESS.toLowerCase());
   }
 
-  let timestamp = Number(log.block.timestamp);
-  let dayID = timestamp / 86400; // rounded
-  let dayStartTimestamp = dayID * 86400;
+  let dayID = BigInt(log.block.timestamp) / 1000n / 86400n;
+  let dayStartTimestamp = (BigInt(log.block.timestamp) / 86400n) * 86400n;
 
   let algebraDayData: AlgebraDayData | undefined = EntityBuffer.get(
     "AlgebraDayData",
@@ -73,15 +72,15 @@ export const updatePoolDayData = async (
   log: Log,
   ctx: DataHandlerContext<Store>
 ): Promise<PoolDayData> => {
-  let timestamp = Number(log.block.timestamp);
-  console.log(timestamp, "timestamp from updatePoolDayData");
-  let dayID = timestamp / 86400;
+  let dayID = BigInt(log.block.timestamp) / 1000n / 86400n;
   console.log(dayID, "day id from update pool day data");
-  let dayStartTimestamp = dayID * 86400;
+  let dayStartTimestamp = (BigInt(log.block.timestamp) / 86400n) * 86400n;
   let dayPoolID = log.address
     .toLowerCase()
     .concat("-")
     .concat(dayID.toString());
+
+  console.log(dayPoolID, "day pool id");
 
   let pool: Pool | undefined = EntityBuffer.get(
     "Pool",
@@ -111,9 +110,9 @@ export const updatePoolDayData = async (
     poolDayData.volumeUSD = ZERO_BD;
     poolDayData.untrackedVolumeUSD = ZERO_BD;
     poolDayData.feesUSD = ZERO_BD;
-    poolDayData.txCount = BigInt(ZERO_BI.toNumber());
-    poolDayData.feeGrowthGlobal0X128 = BigInt(ZERO_BI.toNumber());
-    poolDayData.feeGrowthGlobal1X128 = BigInt(ZERO_BI.toNumber());
+    poolDayData.txCount = BigInt(ZERO_BI);
+    poolDayData.feeGrowthGlobal0X128 = BigInt(ZERO_BI);
+    poolDayData.feeGrowthGlobal1X128 = BigInt(ZERO_BI);
     poolDayData.open = pool!.token0Price;
     poolDayData.high = pool!.token0Price;
     poolDayData.low = pool!.token0Price;
@@ -137,9 +136,7 @@ export const updatePoolDayData = async (
   poolDayData.feesToken1 = pool!.feesToken1;
   poolDayData.tick = pool!.tick;
   poolDayData.tvlUSD = pool!.totalValueLockedUSD;
-  poolDayData.txCount = BigInt(
-    BigDecimal(poolDayData.txCount).plus(ONE_BI).toNumber()
-  );
+  poolDayData.txCount = BigInt(Number(poolDayData.txCount) + Number(ONE_BI));
 
   EntityBuffer.add(poolDayData);
 
@@ -151,9 +148,8 @@ export const updateFeeHourData = async (
   ctx: DataHandlerContext<Store>,
   Fee: BigInt
 ): Promise<void> => {
-  let timestamp = Number(log.block.timestamp);
-  let hourIndex = timestamp / 3600;
-  let hourStartUnix = hourIndex * 3600;
+  let hourIndex = BigInt(log.block.timestamp) / 1000n / 3600n;
+  let hourStartUnix = (BigInt(log.block.timestamp) / 3600n) * 3600n;
   let hourFeeID = log.address
     .toLowerCase()
     .concat("-")
@@ -172,8 +168,7 @@ export const updateFeeHourData = async (
     FeeHourDataEntity.timestamp = BigInt(hourStartUnix);
     FeeHourDataEntity.fee = FeeHourDataEntity.fee + BigInt(Fee.toString());
     FeeHourDataEntity.changesCount =
-      BigInt(FeeHourDataEntity.changesCount.toString()) +
-      BigInt(ONE_BI.toNumber());
+      BigInt(FeeHourDataEntity.changesCount.toString()) + BigInt(ONE_BI);
 
     if (FeeHourDataEntity.maxFee < BigInt(Fee.toString()))
       FeeHourDataEntity.maxFee = BigInt(Fee.toString());
@@ -184,9 +179,9 @@ export const updateFeeHourData = async (
     FeeHourDataEntity = new FeeHourData({ id: hourFeeID.toLowerCase() });
     FeeHourDataEntity.timestamp = BigInt(hourStartUnix);
     FeeHourDataEntity.fee = BigInt(Fee.toString());
-    FeeHourDataEntity.changesCount = BigInt(ONE_BI.toNumber());
+    FeeHourDataEntity.changesCount = BigInt(ONE_BI);
     FeeHourDataEntity.pool = log.address;
-    if (Fee != BigInt(ZERO_BI.toNumber())) {
+    if (Fee != BigInt(ZERO_BI)) {
       FeeHourDataEntity.startFee = BigInt(Fee.toString());
       FeeHourDataEntity.endFee = BigInt(Fee.toString());
       FeeHourDataEntity.maxFee = BigInt(Fee.toString());
@@ -202,8 +197,8 @@ export const updatePoolHourData = async (
   ctx: DataHandlerContext<Store>
 ): Promise<PoolHourData> => {
   let timestamp = Number(log.block.timestamp);
-  let hourIndex = timestamp / 3600; // get unique hour within unix history
-  let hourStartUnix = hourIndex * 3600; // want the rounded effect
+  let hourIndex = BigInt(log.block.timestamp) / 1000n / 3600n; // get unique hour within unix history
+  let hourStartUnix = (BigInt(log.block.timestamp) / 3600n) * 3600n; // want the rounded effect
   let hourPoolID = log.address
     .toLowerCase()
     .concat("-")
@@ -236,10 +231,10 @@ export const updatePoolHourData = async (
     poolHourData.volumeToken1 = ZERO_BD;
     poolHourData.volumeUSD = ZERO_BD;
     poolHourData.untrackedVolumeUSD = ZERO_BD;
-    poolHourData.txCount = BigInt(ZERO_BI.toNumber());
+    poolHourData.txCount = BigInt(ZERO_BI);
     poolHourData.feesUSD = ZERO_BD;
-    poolHourData.feeGrowthGlobal0X128 = BigInt(ZERO_BI.toNumber());
-    poolHourData.feeGrowthGlobal1X128 = BigInt(ZERO_BI.toNumber());
+    poolHourData.feeGrowthGlobal0X128 = BigInt(ZERO_BI);
+    poolHourData.feeGrowthGlobal1X128 = BigInt(ZERO_BI);
     poolHourData.open = pool!.token0Price;
     poolHourData.high = pool!.token0Price;
     poolHourData.low = pool!.token0Price;
@@ -283,9 +278,8 @@ export const updateTokenDayData = async (
     bundle = await ctx.store.get(Bundle, "1");
   }
 
-  let timestamp = Number(log.block.timestamp);
-  let dayID = timestamp / 86400;
-  let dayStartTimestamp = dayID * 86400;
+  let dayID = BigInt(log.block.timestamp) / 1000n / 86400n;
+  let dayStartTimestamp = (BigInt(log.block.timestamp) / 86400n) * 86400n;
   let tokenDayID = token.id
     .toString()
     .toLowerCase()
@@ -348,9 +342,8 @@ export const updateTokenHourData = async (
     bundle = await ctx.store.get(Bundle, "1");
   }
 
-  let timestamp = Number(log.block.timestamp);
-  let hourIndex = timestamp / 3600; // get unique hour within unix history
-  let hourStartUnix = hourIndex * 3600; // want the rounded effect
+  let hourIndex = BigInt(log.block.timestamp) / 1000n / 3600n; // get unique hour within unix history
+  let hourStartUnix = (BigInt(log.block.timestamp) / 3600n) * 3600n; // want the rounded effect
   let tokenHourID = token.id
     .toString()
     .toLowerCase()
@@ -406,9 +399,9 @@ export const updateTickDayData = async (
   log: Log,
   ctx: DataHandlerContext<Store>
 ): Promise<TickDayData> => {
-  let timestamp = Number(log.block.timestamp);
-  let dayID = timestamp / 86400;
-  let dayStartTimestamp = dayID * 86400;
+  let timestamp = BigInt(log.block.timestamp);
+  let dayID = timestamp / 1000n / 86400n;
+  let dayStartTimestamp = (timestamp / 86400n) * 86400n;
   let tickDayDataID = tick.id
     .toLowerCase()
     .concat("-")

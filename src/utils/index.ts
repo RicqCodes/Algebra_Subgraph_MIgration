@@ -10,11 +10,7 @@ import { UpdatedLog } from "./interfaces";
 
 export function exponentToBigDecimal(decimals: BigInt): BigDecimal {
   let bd = BigDecimal("1");
-  for (
-    let i = ZERO_BI;
-    i.lt(BigDecimal(decimals.toString()));
-    i = i.plus(ONE_BI)
-  ) {
+  for (let i = ZERO_BI; i > BigInt(+decimals); i = i + ONE_BI) {
     bd = bd.times(BigDecimal("10"));
   }
   return bd;
@@ -48,7 +44,7 @@ export function tokenAmountToDecimal(
   tokenAmount: BigInt,
   exchangeDecimals: BigInt
 ): BigDecimal {
-  if (BigDecimal(exchangeDecimals.toString()) == ZERO_BI) {
+  if (exchangeDecimals == ZERO_BI) {
     return BigDecimal(tokenAmount.toString());
   }
   return BigDecimal(tokenAmount.toString()).div(
@@ -60,7 +56,7 @@ export function priceToDecimal(
   amount: BigDecimal,
   exchangeDecimals: BigInt
 ): BigDecimal {
-  if (BigDecimal(exchangeDecimals.toString()) == ZERO_BI) {
+  if (exchangeDecimals == ZERO_BI) {
     return amount;
   }
   return safeDiv(amount, exponentToBigDecimal(exchangeDecimals));
@@ -90,7 +86,7 @@ export function convertTokenToDecimal(
   tokenAmount: BigInt,
   exchangeDecimals: BigInt
 ): BigDecimal {
-  if (BigDecimal(exchangeDecimals.toString()) == ZERO_BI) {
+  if (exchangeDecimals == ZERO_BI) {
     return BigDecimal(tokenAmount.toString());
   }
   return BigDecimal(tokenAmount.toString()).div(
