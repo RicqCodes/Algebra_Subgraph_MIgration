@@ -38,7 +38,7 @@ export const updateAlgebraDayData = async (
   }
 
   let dayID = BigInt(log.block.timestamp) / 1000n / 86400n;
-  let dayStartTimestamp = (BigInt(log.block.timestamp) / 86400n) * 86400n;
+  let dayStartTimestamp = dayID * 86400n;
 
   let algebraDayData: AlgebraDayData | undefined = EntityBuffer.get(
     "AlgebraDayData",
@@ -73,7 +73,7 @@ export const updatePoolDayData = async (
   ctx: DataHandlerContext<Store>
 ): Promise<PoolDayData> => {
   let dayID = BigInt(log.block.timestamp) / 1000n / 86400n;
-  let dayStartTimestamp = (BigInt(log.block.timestamp) / 86400n) * 86400n;
+  let dayStartTimestamp = dayID * 86400n;
   let dayPoolID = log.address
     .toLowerCase()
     .concat("-")
@@ -146,7 +146,7 @@ export const updateFeeHourData = async (
   Fee: BigInt
 ): Promise<void> => {
   let hourIndex = BigInt(log.block.timestamp) / 1000n / 3600n;
-  let hourStartUnix = (BigInt(log.block.timestamp) / 3600n) * 3600n;
+  let hourStartUnix = hourIndex * 3600n;
   let hourFeeID = log.address
     .toLowerCase()
     .concat("-")
@@ -193,9 +193,8 @@ export const updatePoolHourData = async (
   log: Log,
   ctx: DataHandlerContext<Store>
 ): Promise<PoolHourData> => {
-  let timestamp = Number(log.block.timestamp);
   let hourIndex = BigInt(log.block.timestamp) / 1000n / 3600n; // get unique hour within unix history
-  let hourStartUnix = (BigInt(log.block.timestamp) / 3600n) * 3600n; // want the rounded effect
+  let hourStartUnix = hourIndex * 3600n; // want the rounded effect
   let hourPoolID = log.address
     .toLowerCase()
     .concat("-")
@@ -276,7 +275,7 @@ export const updateTokenDayData = async (
   }
 
   let dayID = BigInt(log.block.timestamp) / 1000n / 86400n;
-  let dayStartTimestamp = (BigInt(log.block.timestamp) / 86400n) * 86400n;
+  let dayStartTimestamp = dayID * 86400n;
   let tokenDayID = token.id
     .toString()
     .toLowerCase()
@@ -340,7 +339,7 @@ export const updateTokenHourData = async (
   }
 
   let hourIndex = BigInt(log.block.timestamp) / 1000n / 3600n; // get unique hour within unix history
-  let hourStartUnix = (BigInt(log.block.timestamp) / 3600n) * 3600n; // want the rounded effect
+  let hourStartUnix = hourIndex * 3600n; // want the rounded effect
   let tokenHourID = token.id
     .toString()
     .toLowerCase()
@@ -398,7 +397,7 @@ export const updateTickDayData = async (
 ): Promise<TickDayData> => {
   let timestamp = BigInt(log.block.timestamp);
   let dayID = timestamp / 1000n / 86400n;
-  let dayStartTimestamp = (timestamp / 86400n) * 86400n;
+  let dayStartTimestamp = dayID * 86400n;
   let tickDayDataID = tick.id
     .toLowerCase()
     .concat("-")
